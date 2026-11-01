@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pose2Sim 3D Analysis - Screen 3</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    input[type="range"] {
+      accent-color: #0f172a;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen py-6 px-4 sm:px-6">
+
+  <div class="max-w-5xl mx-auto space-y-5">
+
+    <!-- Top Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 shadow-sm">
+            Screen 3 / 3
+          </span>
+        </div>
+        <h1 class="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+          ผลวิเคราะห์การเคลื่อนไหว 3 มิติ
+        </h1>
+      </div>
+
+      <div class="flex items-center gap-2 self-start sm:self-center">
+        <button
+          onclick="window.print()"
+          class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+        >
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          พิมพ์รายงาน (PDF)
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards (Compact Metric Strip) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <!-- 5STS Time -->
+      <div class="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm space-y-1">
+        <span class="text-[11px] font-medium text-slate-500">เวลาลุก-นั่ง 5 ครั้ง</span>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-2xl font-bold tracking-tight text-slate-900">14.2</span>
+          <span class="text-xs text-slate-500">วินาที</span>
+        </div>
+        <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          เกณฑ์ปกติ &lt; 12.0s
+        </span>
+      </div>
+
+      <!-- Knee Symmetry -->
+      <div class="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm space-y-1">
+        <span class="text-[11px] font-medium text-slate-500">ความสมมาตรข้อเข่า (ขวา/ซ้าย)</span>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-2xl font-bold tracking-tight text-amber-700">84°</span>
+          <span class="text-slate-300">/</span>
+          <span class="text-2xl font-bold tracking-tight text-slate-900">98°</span>
+        </div>
+        <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          ต่างกัน 14%
+        </span>
+      </div>
+
+      <!-- Max Trunk Lean -->
+      <div class="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm space-y-1">
+        <span class="text-[11px] font-medium text-slate-500">มุมก้มตัวขณะลุก</span>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-2xl font-bold tracking-tight text-slate-900">42°</span>
+        </div>
+        <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          เกณฑ์ปกติ &lt; 28°
+        </span>
+      </div>
+
+      <!-- CoM Stability -->
+      <div class="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm space-y-1">
+        <span class="text-[11px] font-medium text-slate-500">การส่ายตัว (CoM Sway)</span>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-2xl font-bold tracking-tight text-emerald-700">3.1</span>
+          <span class="text-xs text-slate-500">cm</span>
+        </div>
+        <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          ปกติ (&lt; 5.0 cm)
+        </span>
+      </div>
+    </div>
+
+    <!-- Main Visualizer Grid (3D Kinematic Model + Mot Curve) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+      <!-- Left 5 Cols: OpenSim 3D Biomechanical Skeleton -->
+      <div class="lg:col-span-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-semibold text-slate-900">3D OpenSim Kinematics</h2>
+          <span id="phase-badge" class="text-[11px] font-mono px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-700">
+            Phase: Seat-Off (35%)
+          </span>
+        </div>
+
+        <!-- Biomechanical Skeleton Canvas -->
+        <div class="relative bg-slate-900 rounded-md h-60 flex items-center justify-center overflow-hidden border border-slate-800">
+          <svg id="opensim-svg" width="220" height="220" viewBox="0 0 220 220">
+            <!-- Floor line -->
+            <line x1="20" y1="195" x2="200" y2="195" stroke="#334155" stroke-width="2"/>
+            <!-- Chair contour -->
+            <path d="M55 140 L105 140 L105 195" stroke="#475569" stroke-width="2" fill="none"/>
+            <!-- Skeleton Nodes & Segments -->
+            <circle id="os-head" cx="135" cy="52" r="11" fill="#94A3B8"/>
+            <!-- Torso line -->
+            <line id="os-torso" x1="95" y1="125" x2="132" y2="64" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+            <!-- Left Leg (Normal - Slate 200) -->
+            <polyline id="os-leg-l" points="95,125 140,130 135,192 152,192" stroke="#E2E8F0" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <!-- Right Leg (OA Guarded - Amber) -->
+            <polyline id="os-leg-r" points="95,125 135,138 142,192 158,192" stroke="#F59E0B" stroke-width="4" stroke-dasharray="5,3" fill="none" stroke-linecap="round"/>
+            <!-- Joint Pivots -->
+            <circle id="os-pelvis" cx="95" cy="125" r="4.5" fill="#FFFFFF" stroke="#0F172A" stroke-width="2"/>
+            <circle id="os-knee" cx="138" cy="134" r="4.5" fill="#FFFFFF" stroke="#F59E0B" stroke-width="2"/>
+          </svg>
+
+          <!-- Current Live Angle Readouts -->
+          <div class="absolute bottom-2.5 left-2.5 right-2.5 flex justify-between text-[11px] bg-slate-950/80 backdrop-blur border border-slate-700 px-3 py-1.5 rounded text-slate-300 font-mono">
+            <span>เข่าซ้าย: <strong id="lbl-knee-l" class="text-white">96°</strong></span>
+            <span>เข่าขวา: <strong id="lbl-knee-r" class="text-amber-400">82°</strong></span>
+            <span>ก้มตัว: <strong id="lbl-trunk" class="text-white">42°</strong></span>
+          </div>
+        </div>
+
+        <!-- Phase Scrubber (0% to 100%) -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>0% นั่ง</span>
+            <span>35% ก้นลอย (Seat-Off)</span>
+            <span>100% ยืนตรง</span>
+          </div>
+          <input
+            id="phase-slider"
+            type="range"
+            min="0"
+            max="100"
+            value="35"
+            oninput="updatePhase(this.value)"
+            class="w-full cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
+          />
+        </div>
+      </div>
+
+      <!-- Right 7 Cols: OpenSim .mot Waveform Chart -->
+      <div class="lg:col-span-7 rounded-lg border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-semibold text-slate-900">มุมข้อต่อตลอดรอบการลุกยืน (.mot)</h2>
+          </div>
+          <!-- Joint Toggle Pill -->
+          <div class="inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-50 text-xs">
+            <button onclick="selectJoint('knee')" id="btn-knee" class="px-2.5 py-1 rounded font-medium bg-white text-slate-900 shadow-sm text-[11px]">เข่า</button>
+            <button onclick="selectJoint('hip')" id="btn-hip" class="px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-900 text-[11px]">สะโพก</button>
+            <button onclick="selectJoint('ankle')" id="btn-ankle" class="px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-900 text-[11px]">ข้อเท้า</button>
+          </div>
+        </div>
+
+        <!-- SVG Waveform Container -->
+        <div class="bg-slate-50 rounded-md p-3 border border-slate-100 relative">
+          <svg viewBox="0 0 500 190" class="w-full h-44 overflow-visible">
+            <!-- Grid Lines -->
+            <line x1="35" y1="15" x2="480" y2="15" stroke="#E2E8F0" stroke-dasharray="3,3"/>
+            <line x1="35" y1="85" x2="480" y2="85" stroke="#E2E8F0" stroke-dasharray="3,3"/>
+            <line x1="35" y1="155" x2="480" y2="155" stroke="#CBD5E1"/>
+            <text x="5" y="19" font-size="10" fill="#64748B">100°</text>
+            <text x="10" y="89" font-size="10" fill="#64748B">50°</text>
+            <text x="16" y="159" font-size="10" fill="#64748B">0°</text>
+
+            <!-- Normative Band (Shaded) -->
+            <path d="M35,30 C120,25 180,20 240,70 C320,135 400,150 480,153 L480,160 C400,157 320,145 240,88 C180,40 120,45 35,50 Z" fill="#94A3B8" opacity="0.18"/>
+
+            <!-- Left Limb Curve (Slate-900) -->
+            <path id="curve-left" d="M35,35 C120,28 175,25 235,72 C315,135 395,152 480,154" fill="none" stroke="#0F172A" stroke-width="2.5" stroke-linecap="round"/>
+
+            <!-- Right Limb Curve (Amber-600) -->
+            <path id="curve-right" d="M35,55 C120,48 175,46 235,88 C315,140 395,154 480,156" fill="none" stroke="#D97706" stroke-width="2.5" stroke-dasharray="5,4" stroke-linecap="round"/>
+
+            <!-- Interactive Cursor Line -->
+            <line id="cursor-line" x1="190" y1="12" x2="190" y2="160" stroke="#0F172A" stroke-width="1.5" stroke-dasharray="2,2"/>
+            <circle id="cursor-dot-l" cx="190" cy="44" r="4" fill="#0F172A" stroke="#FFF" stroke-width="1.5"/>
+            <circle id="cursor-dot-r" cx="190" cy="65" r="4" fill="#D97706" stroke="#FFF" stroke-width="1.5"/>
+
+            <!-- X-Axis Labels -->
+            <text x="35" y="180" font-size="10" fill="#64748B">0% นั่ง</text>
+            <text x="175" y="180" font-size="10" fill="#0F172A" font-weight="600">35% Seat-Off</text>
+            <text x="425" y="180" font-size="10" fill="#64748B">100% ยืนตรง</text>
+          </svg>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs pt-0.5">
+          <div class="flex items-center gap-3 text-[11px]">
+            <span class="flex items-center gap-1.5 text-slate-800">
+              <span class="w-3 h-1 bg-slate-900 inline-block rounded"></span> ข้างซ้าย (ปกติ 98°)
+            </span>
+            <span class="flex items-center gap-1.5 text-amber-700">
+              <span class="w-3 h-1 bg-amber-600 inline-block rounded border-dashed"></span> ข้างขวา (84°)
+            </span>
+            <span class="flex items-center gap-1.5 text-slate-500">
+              <span class="w-3 h-2 bg-slate-300 inline-block rounded-sm"></span> เกณฑ์อ้างอิงปกติ 65+
+            </span>
+          </div>
+          <span class="text-slate-400 font-mono text-[10px]">60 FPS • IK Error 2.4°</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Clinical Assessment Cards (AWGS 2025 Standard) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+      <!-- Card 1: AWGS 2025 Sarcopenia Diagnosis -->
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-red-500"></span>
+            <h2 class="text-xs font-semibold text-slate-900">การวินิจฉัย Sarcopenia (AWGS 2025)</h2>
+          </div>
+          <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
+            เข้าเกณฑ์ (Confirmed)
+          </span>
+        </div>
+
+        <div class="divide-y divide-slate-100 text-xs">
+          <div class="py-2 flex items-center justify-between">
+            <span class="text-slate-600">แรงบีบมือ (Handgrip)</span>
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-red-700">25.2 kg</span>
+              <span class="text-slate-400 text-[11px]">(เกณฑ์ชาย &ge; 28.0)</span>
+            </div>
+          </div>
+          <div class="py-2 flex items-center justify-between">
+            <span class="text-slate-600">มวลกล้ามเนื้อ (BIA ASM/ht²)</span>
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-red-700">6.4 kg/m²</span>
+              <span class="text-slate-400 text-[11px]">(เกณฑ์ชาย &ge; 7.0)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Physical Performance & Biomechanics Tracking -->
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-amber-500"></span>
+            <h2 class="text-xs font-semibold text-slate-900">สมรรถภาพทางกาย (Outcome Tracking)</h2>
+          </div>
+          <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+            จำกัดระดับปานกลาง
+          </span>
+        </div>
+
+        <div class="divide-y divide-slate-100 text-xs">
+          <div class="py-2 flex items-center justify-between">
+            <span class="text-slate-600">เวลาลุก-นั่ง 5STS</span>
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-amber-700">14.2 s</span>
+              <span class="text-slate-400 text-[11px]">(เกณฑ์ &le; 12.0s)</span>
+            </div>
+          </div>
+          <div class="py-2 flex items-center justify-between">
+            <span class="text-slate-600">ความเร็วในการยืน</span>
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-800">0.38 m/s</span>
+              <span class="text-slate-400 text-[11px]">(สมดุลปกติ)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Navigation Footer -->
+    <div class="flex items-center justify-between pt-2">
+      <a
+        href="5.2-motion-capture.html"
+        class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span>กลับไปหน้าบันทึกวิดีโอ (หน้า 2)</span>
+      </a>
+
+      <a
+        href="5.1-screening-form.html"
+        class="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3.5 py-2 text-xs font-medium text-white shadow hover:bg-slate-800 transition-colors"
+      >
+        <span>เริ่มตรวจคนไข้คนใหม่</span>
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    function updatePhase(val) {
+      const p = Number(val);
+      const x = 35 + (p / 100) * 445;
+      document.getElementById('cursor-line').setAttribute('x1', x);
+      document.getElementById('cursor-line').setAttribute('x2', x);
+
+      const leftDeg = Math.round(98 - (p / 100) * 92);
+      const rightDeg = Math.round(84 - (p / 100) * 78);
+      const trunkDeg = p < 40 ? Math.round(15 + (p / 40) * 27) : Math.round(42 - ((p - 40) / 60) * 38);
+
+      document.getElementById('lbl-knee-l').textContent = leftDeg + '°';
+      document.getElementById('lbl-knee-r').textContent = rightDeg + '°';
+      document.getElementById('lbl-trunk').textContent = trunkDeg + '°';
+
+      const phaseName = p < 25 ? 'เตรียมตัว' : p < 55 ? 'Seat-Off' : p < 85 ? 'เหยียดตัว' : 'ยืนตรง';
+      document.getElementById('phase-badge').textContent = `Phase: ${phaseName} (${p}%)`;
+
+      const yl = 35 + (p / 100) * 119;
+      const yr = 55 + (p / 100) * 101;
+      document.getElementById('cursor-dot-l').setAttribute('cx', x);
+      document.getElementById('cursor-dot-l').setAttribute('cy', yl);
+      document.getElementById('cursor-dot-r').setAttribute('cx', x);
+      document.getElementById('cursor-dot-r').setAttribute('cy', yr);
+
+      // Animate Stick Figure standing up
+      const pelvisY = 125 - (p / 100) * 35;
+      const pelvisX = 95 + (p / 100) * 35;
+      const headX = pelvisX + (trunkDeg * 0.7);
+      const headY = pelvisY - 68;
+      document.getElementById('os-pelvis').setAttribute('cx', pelvisX);
+      document.getElementById('os-pelvis').setAttribute('cy', pelvisY);
+      document.getElementById('os-torso').setAttribute('x1', pelvisX);
+      document.getElementById('os-torso').setAttribute('y1', pelvisY);
+      document.getElementById('os-torso').setAttribute('x2', headX);
+      document.getElementById('os-torso').setAttribute('y2', headY + 10);
+      document.getElementById('os-head').setAttribute('cx', headX);
+      document.getElementById('os-head').setAttribute('cy', headY);
+      document.getElementById('os-leg-l').setAttribute('points', `${pelvisX},${pelvisY} 140,135 138,192 154,192`);
+      document.getElementById('os-leg-r').setAttribute('points', `${pelvisX},${pelvisY} 136,140 142,192 158,192`);
+    }
+
+    function selectJoint(joint) {
+      ['knee', 'hip', 'ankle'].forEach(j => {
+        const btn = document.getElementById('btn-' + j);
+        if (j === joint) {
+          btn.className = "px-2.5 py-1 rounded font-medium bg-white text-slate-900 shadow-sm text-[11px]";
+        } else {
+          btn.className = "px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-900 text-[11px]";
+        }
+      });
+      const leftPath = document.getElementById('curve-left');
+      const rightPath = document.getElementById('curve-right');
+      if (joint === 'knee') {
+        leftPath.setAttribute('d', 'M35,35 C120,28 175,25 235,72 C315,135 395,152 480,154');
+        rightPath.setAttribute('d', 'M35,55 C120,48 175,46 235,88 C315,140 395,154 480,156');
+      } else if (joint === 'hip') {
+        leftPath.setAttribute('d', 'M35,50 C120,20 185,18 250,78 C320,138 400,152 480,155');
+        rightPath.setAttribute('d', 'M35,58 C120,28 185,25 250,86 C320,144 400,154 480,156');
+      } else {
+        leftPath.setAttribute('d', 'M35,125 C120,105 185,90 250,118 C320,142 400,150 480,152');
+        rightPath.setAttribute('d', 'M35,132 C120,118 185,108 250,128 C320,146 400,152 480,154');
+      }
+    }
+  </script>
+</body>
+</html>

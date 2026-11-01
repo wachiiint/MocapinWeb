@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motion Capture - Dual Camera (Screen 2)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen py-6 px-4 sm:px-6">
+
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- ========================================================= -->
+    <!-- VIEW 1: POSE PROTOCOL SELECTION LIST                      -->
+    <!-- ========================================================= -->
+    <div id="view-pose-list" class="space-y-6">
+
+      <!-- Top Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 shadow-sm">
+              Screen 2 / 3
+            </span>
+          </div>
+          <h1 class="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            บันทึกวิดีโอการเคลื่อนไหว
+          </h1>
+          <p class="text-xs text-slate-500">
+            เลือกท่าที่ต้องการทดสอบ (ท่าที่ไม่ได้เลือกบันทึกจะถูกบันทึกว่าไม่สามารถทำได้)
+          </p>
+        </div>
+
+        <a
+          href="5.3-pose2sim-analysis.html"
+          class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors gap-1.5 self-start sm:self-center"
+        >
+          <span>ข้ามไปหน้าผลวิเคราะห์ (หน้า 3)</span>
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+
+      <!-- Pose Selection Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <!-- Pose 1: 5STS -->
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-between space-y-4 hover:border-teal-500 transition-all">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium bg-teal-50 text-teal-700 border border-teal-100">
+                ท่าที่ 1
+              </span>
+              <span class="h-2 w-2 rounded-full bg-emerald-500" title="พร้อมทดสอบ"></span>
+            </div>
+            <h2 class="text-sm font-semibold text-slate-900">
+              ลุก-นั่ง 5 ครั้ง (5-Time Sit-to-Stand)
+            </h2>
+            <p class="text-xs text-slate-500">
+              ประเมินกำลังกล้ามเนื้อรยางค์ขาและเวลาที่ใช้ในการลุกยืน 5 รอบ
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick="selectPose(0)"
+            class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-xs font-medium text-white shadow hover:bg-slate-800 transition-colors w-full gap-1.5"
+          >
+            <span>เริ่มบันทึกท่านี้</span>
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Pose 2: 4m Walk -->
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-between space-y-4 hover:border-teal-500 transition-all">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                ท่าที่ 2
+              </span>
+              <span class="h-2 w-2 rounded-full bg-slate-300" title="รอการทดสอบ"></span>
+            </div>
+            <h2 class="text-sm font-semibold text-slate-900">
+              เดิน 4 เมตร (4m Walk Test)
+            </h2>
+            <p class="text-xs text-slate-500">
+              วัดความเร็วการเดินปกติในระยะทางราบ 4 เมตร
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick="selectPose(1)"
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm hover:bg-slate-50 transition-colors w-full gap-1.5"
+          >
+            <span>เริ่มบันทึกท่านี้</span>
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Pose 3: Tandem Balance -->
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-between space-y-4 hover:border-teal-500 transition-all">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                ท่าที่ 3
+              </span>
+              <span class="h-2 w-2 rounded-full bg-slate-300" title="รอการทดสอบ"></span>
+            </div>
+            <h2 class="text-sm font-semibold text-slate-900">
+              การทรงตัวแบบยืนต่อเท้า (Tandem Balance)
+            </h2>
+            <p class="text-xs text-slate-500">
+              ทดสอบการทรงตัวในท่ายืนเท้าต่อเท้าเป็นเวลา 10 วินาที
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick="selectPose(2)"
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm hover:bg-slate-50 transition-colors w-full gap-1.5"
+          >
+            <span>เริ่มบันทึกท่านี้</span>
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Navigation Footer -->
+      <div class="flex items-center justify-between pt-2">
+        <a
+          href="5.1-screening-form.html"
+          class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>กลับไปหน้าแบบประเมิน (หน้า 1)</span>
+        </a>
+      </div>
+
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- VIEW 2: MOTION CAPTURE VIEWFINDER (CURRENT SCREEN 2)       -->
+    <!-- ========================================================= -->
+    <div id="view-capture" class="hidden space-y-6">
+
+      <!-- Top Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 shadow-sm">
+              Screen 2 / 3
+            </span>
+            <button
+              type="button"
+              onclick="showPoseList()"
+              class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 transition-colors ml-1"
+            >
+              <span>← กลับหน้ารายการท่า</span>
+            </button>
+          </div>
+          <h1 class="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            บันทึกวิดีโอการเคลื่อนไหว
+          </h1>
+        </div>
+
+        <!-- Active Pose Badge -->
+        <div class="flex items-center gap-2 self-start sm:self-center">
+          <span class="text-xs font-medium text-slate-500">กำลังบันทึก:</span>
+          <span id="active-pose-name" class="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-900 shadow-sm">
+            ลุก-นั่ง 5 ครั้ง (5-Time Sit-to-Stand)
+          </span>
+        </div>
+      </div>
+
+      <!-- Sync & Hardware Status Bar (shadcn card) -->
+      <div class="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex flex-wrap items-center gap-4">
+          <!-- Cam 1 Status -->
+          <div class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span class="font-medium text-slate-800">กล้อง 1:</span>
+            <span class="text-slate-500">เชื่อมต่อแล้ว (60 FPS)</span>
+          </div>
+          <!-- Cam 2 Status -->
+          <div class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span class="font-medium text-slate-800">กล้อง 2:</span>
+            <span class="text-slate-500">เชื่อมต่อแล้ว (60 FPS)</span>
+          </div>
+        </div>
+
+        <!-- Calibration & Timecode Sync -->
+        <div class="flex items-center gap-3 text-slate-500">
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Calib.toml พร้อมใช้งาน
+          </span>
+          <span class="text-slate-300">|</span>
+          <span class="font-mono text-slate-700">Timecode Synced</span>
+        </div>
+      </div>
+
+      <!-- Dual Viewfinder Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- ================= CAMERA 1: SAGITTAL (90° Side View) ================= -->
+        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <h2 class="text-sm font-semibold text-slate-900">กล้องที่ 1: มุมด้านข้าง</h2>
+            </div>
+            <span class="text-[11px] font-medium px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-600">
+              ระยะ 2.5m • มองมุมเข่าและสะโพก
+            </span>
+          </div>
+
+          <!-- Viewfinder Frame -->
+          <div class="relative bg-slate-950 rounded-md aspect-[4/3] flex items-center justify-center overflow-hidden border border-slate-800">
+
+            <!-- Top-left overlay: Real-time pose tracking info -->
+            <div class="absolute top-3 left-3 flex flex-col gap-1 text-[11px] font-mono text-white/80 pointer-events-none z-10">
+              <div class="flex items-center gap-1.5 bg-black/60 px-2 py-0.5 rounded border border-white/10">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                <span>RTMPose: 26/26 Pts</span>
+              </div>
+            </div>
+
+            <!-- Guideline SVG Overlay (Side View: Chair + Body Box) -->
+            <svg viewBox="0 0 400 300" class="absolute inset-0 w-full h-full pointer-events-none">
+              <!-- Dashed target boundary for standing box -->
+              <rect x="110" y="30" width="180" height="240" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6"/>
+              <!-- Dashed Chair Profile -->
+              <path d="M140 180 L200 180 L200 260 M140 120 L140 260" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6"/>
+
+              <!-- Simulated RTMPose 2D Skeleton (Side Profile) -->
+              <!-- Head (blurred circle representation) -->
+              <circle cx="215" cy="75" r="14" fill="#64748B" opacity="0.7"/>
+              <!-- Torso line -->
+              <line x1="215" y1="90" x2="190" y2="175" stroke="#E2E8F0" stroke-width="3" stroke-linecap="round"/>
+              <!-- Crossed Arms -->
+              <polyline points="210,110 235,135 205,145" fill="none" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- Thigh & Shank (Sitting position) -->
+              <polyline points="190,175 250,185 245,260 270,262" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round"/>
+              <!-- Keypoint Nodes -->
+              <circle cx="215" cy="90" r="3.5" fill="#FFFFFF"/>
+              <circle cx="190" cy="175" r="4" fill="#FFFFFF"/>
+              <circle cx="250" cy="185" r="4" fill="#FFFFFF"/>
+              <circle cx="245" cy="260" r="4" fill="#FFFFFF"/>
+              <circle cx="270" cy="262" r="3" fill="#FFFFFF"/>
+            </svg>
+
+            <!-- Center Guide Label -->
+            <div class="absolute bottom-3 text-center text-[11px] text-slate-300 bg-black/60 px-3 py-1 rounded border border-white/10 pointer-events-none">
+              จัดให้เก้าอี้และข้อต่อขาด้านขวาอยู่ในกรอบประ
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= CAMERA 2: OBLIQUE (45° Frontal-Oblique) ================= -->
+        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <h2 class="text-sm font-semibold text-slate-900">กล้องที่ 2: มุมเฉียงหน้า</h2>
+            </div>
+            <span class="text-[11px] font-medium px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-600">
+              ระยะ 3.0m • ตรวจความสมดุลซ้าย-ขวา
+            </span>
+          </div>
+
+          <!-- Viewfinder Frame -->
+          <div class="relative bg-slate-950 rounded-md aspect-[4/3] flex items-center justify-center overflow-hidden border border-slate-800">
+
+            <!-- Top-left overlay: Real-time pose tracking info -->
+            <div class="absolute top-3 left-3 flex flex-col gap-1 text-[11px] font-mono text-white/80 pointer-events-none z-10">
+              <div class="flex items-center gap-1.5 bg-black/60 px-2 py-0.5 rounded border border-white/10">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                <span>RTMPose: 26/26 Pts</span>
+              </div>
+            </div>
+
+            <!-- Guideline SVG Overlay (Oblique 45° View: Chair + Body Box) -->
+            <svg viewBox="0 0 400 300" class="absolute inset-0 w-full h-full pointer-events-none">
+              <!-- Center alignment axis -->
+              <line x1="200" y1="30" x2="200" y2="270" stroke="#94A3B8" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+              <!-- Stance Boundary Box -->
+              <rect x="120" y="30" width="160" height="240" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6"/>
+
+              <!-- Simulated RTMPose 2D Skeleton (Oblique 45° angle) -->
+              <!-- Head -->
+              <circle cx="200" cy="72" r="14" fill="#64748B" opacity="0.7"/>
+              <!-- Shoulders & Torso -->
+              <line x1="175" y1="92" x2="225" y2="92" stroke="#E2E8F0" stroke-width="3" stroke-linecap="round"/>
+              <line x1="200" y1="92" x2="195" y2="170" stroke="#E2E8F0" stroke-width="3" stroke-linecap="round"/>
+              <!-- Pelvis -->
+              <line x1="175" y1="170" x2="215" y2="170" stroke="#E2E8F0" stroke-width="3" stroke-linecap="round"/>
+              <!-- Left Leg (Blue accent) -->
+              <polyline points="180,170 165,215 168,260 155,264" fill="none" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+              <!-- Right Leg (Green accent) -->
+              <polyline points="210,170 230,215 225,260 240,264" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
+              <!-- Nodes -->
+              <circle cx="200" cy="92" r="3.5" fill="#FFFFFF"/>
+              <circle cx="165" cy="215" r="4" fill="#FFFFFF"/>
+              <circle cx="230" cy="215" r="4" fill="#FFFFFF"/>
+              <circle cx="168" cy="260" r="3.5" fill="#FFFFFF"/>
+              <circle cx="225" cy="260" r="3.5" fill="#FFFFFF"/>
+            </svg>
+
+            <!-- Center Guide Label -->
+            <div class="absolute bottom-3 text-center text-[11px] text-slate-300 bg-black/60 px-3 py-1 rounded border border-white/10 pointer-events-none">
+              จัดให้ลำตัวตั้งตรงและมองเห็นขาทั้ง 2 ข้างชัดเจน
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recording Controls (shadcn card) -->
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+          <!-- Live Timer & Rep Readout -->
+          <div class="flex items-center gap-6">
+            <div>
+              <p class="text-xs text-slate-500 font-medium">จำนวนรอบที่ตรวจจับได้</p>
+              <p class="text-2xl font-semibold tracking-tight text-slate-900" id="rep-counter">
+                0 <span class="text-xs font-normal text-slate-400">/ 5 ครั้ง</span>
+              </p>
+            </div>
+            <div class="h-8 w-[1px] bg-slate-200"></div>
+            <div>
+              <p class="text-xs text-slate-500 font-medium">เวลาบันทึกรวม</p>
+              <p class="text-2xl font-mono font-semibold tracking-tight text-slate-900" id="timer-display">
+                00:00.0
+              </p>
+            </div>
+          </div>
+
+          <!-- Controls: Record & Next Pose -->
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Main Record Button (shadcn primary) -->
+            <button
+              type="button"
+              id="btn-record"
+              onclick="toggleRecording()"
+              class="inline-flex items-center justify-center rounded-md bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-900 gap-2 transition-colors"
+            >
+              <span class="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" id="record-dot"></span>
+              <span id="record-text">เริ่มบันทึกพร้อมกัน 2 กล้อง</span>
+            </button>
+
+            <!-- Next Pose Button -->
+            <button
+              type="button"
+              onclick="nextPose()"
+              class="inline-flex items-center justify-center rounded-md bg-teal-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-teal-700 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-700 gap-1.5 transition-colors"
+            >
+              <span>ท่าถัดไป</span>
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Navigation Footer -->
+      <div class="flex items-center justify-between pt-2">
+        <button
+          type="button"
+          onclick="showPoseList()"
+          class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>กลับไปหน้ารายการท่า</span>
+        </button>
+
+        <a
+          href="5.3-pose2sim-analysis.html"
+          class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-xs font-medium text-white shadow hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-900 gap-1.5 transition-colors"
+        >
+          <span>ไปหน้าผลวิเคราะห์ 3D Pose2Sim (หน้า 3)</span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    const poseList = [
+      "ลุก-นั่ง 5 ครั้ง (5-Time Sit-to-Stand)",
+      "เดิน 4 เมตร (4m Walk Test)",
+      "การทรงตัวแบบยืนต่อเท้า (Tandem Balance)"
+    ];
+    let currentPoseIndex = 0;
+    let isRecording = false;
+    let timer = null;
+    let seconds = 0;
+
+    function selectPose(index) {
+      currentPoseIndex = index;
+      document.getElementById('active-pose-name').textContent = poseList[currentPoseIndex];
+      document.getElementById('view-pose-list').classList.add('hidden');
+      document.getElementById('view-capture').classList.remove('hidden');
+      resetRecordingState();
+    }
+
+    function showPoseList() {
+      resetRecordingState();
+      document.getElementById('view-capture').classList.add('hidden');
+      document.getElementById('view-pose-list').classList.remove('hidden');
+    }
+
+    function nextPose() {
+      resetRecordingState();
+      if (currentPoseIndex < poseList.length - 1) {
+        currentPoseIndex++;
+        document.getElementById('active-pose-name').textContent = poseList[currentPoseIndex];
+      } else {
+        // All poses completed or user at the end of the sequence
+        window.location.href = '5.3-pose2sim-analysis.html';
+      }
+    }
+
+    function resetRecordingState() {
+      if (isRecording) {
+        clearInterval(timer);
+        isRecording = false;
+      }
+      seconds = 0;
+      document.getElementById('timer-display').textContent = '00:00.0';
+      document.getElementById('rep-counter').innerHTML = `0 <span class="text-xs font-normal text-slate-400">/ 5 ครั้ง</span>`;
+      const btn = document.getElementById('btn-record');
+      const text = document.getElementById('record-text');
+      const dot = document.getElementById('record-dot');
+      text.textContent = 'เริ่มบันทึกพร้อมกัน 2 กล้อง';
+      btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+      btn.classList.add('bg-slate-900', 'hover:bg-slate-800');
+      dot.classList.remove('bg-white');
+      dot.classList.add('bg-red-500');
+    }
+
+    function toggleRecording() {
+      isRecording = !isRecording;
+      const btn = document.getElementById('btn-record');
+      const text = document.getElementById('record-text');
+      const dot = document.getElementById('record-dot');
+      const repEl = document.getElementById('rep-counter');
+
+      if (isRecording) {
+        text.textContent = 'หยุดบันทึก (Stop Dual Sync)';
+        btn.classList.add('bg-red-600', 'hover:bg-red-700');
+        btn.classList.remove('bg-slate-900', 'hover:bg-slate-800');
+        dot.classList.add('bg-white');
+        dot.classList.remove('bg-red-500');
+
+        seconds = 0;
+        timer = setInterval(() => {
+          seconds += 0.1;
+          const s = Math.floor(seconds);
+          const ms = Math.floor((seconds % 1) * 10);
+          document.getElementById('timer-display').textContent = 
+            `00:${s < 10 ? '0' : ''}${s}.${ms}`;
+          
+          // Simulate rep counting
+          if (s >= 3 && s < 6) repEl.innerHTML = `1 <span class="text-xs font-normal text-slate-400">/ 5 ครั้ง</span>`;
+          else if (s >= 6 && s < 9) repEl.innerHTML = `2 <span class="text-xs font-normal text-slate-400">/ 5 ครั้ง</span>`;
+          else if (s >= 9 && s < 12) repEl.innerHTML = `3 <span class="text-xs font-normal text-slate-400">/ 5 ครั้ง</span>`;
+          else if (s >= 12 && s < 15) repEl.innerHTML = `4 <span class="text-xs font-normal text-slate-400">/ 5 ครั้ง</span>`;
+          else if (s >= 15) repEl.innerHTML = `5 <span class="text-xs font-normal text-slate-400">/ 5 ครั้ง</span>`;
+        }, 100);
+      } else {
+        clearInterval(timer);
+        text.textContent = 'บันทึกเรียบร้อย (เริ่มใหม่)';
+        btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        btn.classList.add('bg-slate-900', 'hover:bg-slate-800');
+        dot.classList.remove('bg-white');
+        dot.classList.add('bg-red-500');
+      }
+    }
+  </script>
+</body>
+</html>
