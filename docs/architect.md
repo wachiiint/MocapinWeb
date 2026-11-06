@@ -1,5 +1,6 @@
 # Architect
-This chapter will be divide to 4 views
+This chapter is divided into 4 views
+[Anti-Slop Indicator: 90% - ALL HEAVY Reviewed by Wachi]
 
 ## System Architecture
 [Anti-Slop Indicator: 90% - Reviewed by DeepAung]
@@ -48,7 +49,7 @@ flowchart LR
 |---|---|---|
 | Frontend → API | REST/JSON, session cookie | Everything except video bytes |
 | Frontend ↔ Object storage | Presigned URL (temporary link, 1 file, 1 action) | Video upload; doctor replay |
-| API → Redis job queue | Push | Small job: recording id, mode, file keys |
+| API → Redis job queue | Push | Small job: recording id, video keys (count = camera count), calibration key, patient height + weight |
 | Worker ↔ Object storage | S3 API | Download video, upload outputs |
 | Worker → Redis result queue | Push | Metrics + output file keys, or error |
 | Frontend → API | Polling every few seconds | Job status `processing → done / failed` |
@@ -69,13 +70,13 @@ Pipeline depends on camera count, not location.
 | | 1 camera | 2+ cameras |
 |---|---|---|
 | Where | Home | Home (optional 2nd camera) · Hospital |
-| Worker pipeline | RTMPose 2D → reps, timing | RTMPose → Pose2Sim 3D → OpenSim angles, ROM |
-| Output | Coarse data + see-a-doctor probability | 3D biomechanics for doctor's progress view |
+| Worker pipeline | RTMPose 2D → reps, timing, 2D joint angles | RTMPose → Pose2Sim 3D → OpenSim angles, ROM |
+| Output | Coarse data + 2D angles (labeled 2D) | 3D biomechanics for doctor's progress view |
 
 ### Note
 [Anti-Slop Indicator: 70% - Wachi thinks important]
 - **One source of truth for keypoints** \
-    diagnostic numbers come only from server RTMPose. The in-browser model is a quality gate (lighting, framing, extra person), never stored as a result.
+    measurement numbers come only from server RTMPose. The in-browser model is a quality gate (lighting, framing, extra person), never stored as a result.
 - **Claim-check:** \ 
     Redis carries keys, not video bytes.
 - **Pose Engine never touches PostgreSQL** \
@@ -94,9 +95,13 @@ Pipeline depends on camera count, not location.
     Affects: "Two pipeline modes" table and the "2nd camera?" branch in User workflow
 - **Clinical scoring location** \
     Go `usecases/` (current), or a separate scoring service
+- **Calibration reuse** (owner: GAn) \
+    Lens calibration reused per camera; camera-space calibration redone every session? GAn to verify
+- **Fine-tuned RTMPose weights location** (owner: DeepAung) \
+    Object storage, baked into Docker image, or shared folder on server
 
 ## Project Directory
-[Anti-Slop Indicator: 80% - Reviewed by Wachi]
+[Anti-Slop Indicator: 60% - Cam change later]
 ```text
 ├── docker-compose.yml          # All services on 1 GPU server: frontend, api, postgres, redis, object storage, pose-engine
 ├── .env.example                # Required env vars (no secrets)
@@ -142,12 +147,14 @@ Pipeline depends on camera count, not location.
 
 Runs inside the Pose Engine worker, one job per recording.
 
+Toggle Pan mode to drag and view entire flow
 ```mermaid
+%%{init: {"flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
     subgraph BR["Browser"]
-        CAM["Record<br/>1 or 2+ cameras"] --> GUARD{"Live check<br/>lighting, framing,<br/>extra person"}
-        GUARD -- fail --> CAM
-        GUARD -- pass --> UP["Upload via<br/>presigned URL"]
+        PRE{"Live check before start<br/>lighting, framing,<br/>extra person"} -- fail --> PRE
+        PRE -- pass --> CAM["Record 1 or 2+ cameras<br/>live warnings during record"]
+        CAM --> UP["Upload via<br/>presigned URL"]
     end
 
     API["Go API"]
@@ -156,12 +163,12 @@ flowchart LR
 
     UP -- video --> OBJ
     UP -- "upload done" --> API
-    API -- "check file, push job:<br/>id, mode, file keys,<br/>height, weight" --> JQ
+    API -- "check file, push job:<br/>id, video keys, calibration key,<br/>height, weight" --> JQ
     JQ --> D
 
     subgraph WK["Pose Engine worker"]
         D{"Camera count"}
-        D -- 1 --> K1["RTMPose 2D<br/>HALPE_26"] --> F1["Filter"] --> M1["Metrics<br/>reps, timing"]
+        D -- 1 --> K1["RTMPose 2D<br/>HALPE_26"] --> F1["Filter"] --> M1["Metrics<br/>reps, timing, 2D angles"]
         D -- "2+" --> S["Sync<br/>recording timestamps"] --> K2["RTMPose 2D<br/>per camera"]
         K2 --> T["Triangulate 3D<br/>Pose2Sim + calibration"] --> F2["Filter"]
         F2 --> IK["OpenSim<br/>scale + inverse kinematics"] --> M2["Metrics<br/>joint angles, ROM, compensation"]
@@ -184,11 +191,12 @@ flowchart LR
 | Triangulation (2+ cams) | Pose2Sim + camera calibration | 3D keypoints `.trc` |
 | Filter | Butterworth low-pass (removes jitter) | Smooth keypoints |
 | Inverse kinematics (2+ cams) | OpenSim, Pose2Sim bundled model, scaled by patient height + weight | Joint angles `.mot` |
-| Metrics | Python (numpy/scipy) | Raw numbers only: reps, times, ROM, compensation flags. No clinical judgement |
+| Metrics | Python (numpy/scipy) | Raw numbers only: reps, times, 2D/3D joint angles, ROM, compensation flags. No clinical judgement |
 
 ### Storage layout (per recording)
 
 ```text
+calibration/{camera or setup id}/   # lens + camera-space calibration, referenced by recordings
 recordings/{id}/
 ├── raw/          # cam1.mp4, cam2.mp4
 ├── keypoints/    # 2D keypoints per camera
@@ -205,7 +213,8 @@ recordings/{id}/
 - **Muscle model** (gait2392 + MRI muscle data) is a later phase, after joint angles are validated.
 
 ## User workflow
-Toogle Pan mode to drag and view entire flow
+[Anti-Slop Indicator: 70% - Heavy review by Wachi]
+Toggle Pan mode to drag and view entire flow
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
@@ -222,14 +231,16 @@ flowchart LR
         H4 -- yes --> H5b["Set up 2 cameras<br/>calibrate cameras together"]
         H5a --> H5["Record<br/>live pose check"]
         H5b --> H5
-        H5 --> H6["See coarse raw data"]
-        H6 --> H7["Analysis result (async)<br/>see-a-doctor probability + confidence %"]
+        H5 --> H6["Processing…<br/>then coarse data"]
+        H6 --> NEW{"Is new patient?"}
+        NEW -- yes --> H7["See-a-doctor probability<br/>+ confidence %"]
+        NEW -- no --> H8["Doctor's appointment<br/>or urgent risk alert"]
     end
 
     subgraph HOSP["Patient · Hospital (nurse assists)"]
         P1["Measure with tools<br/>e.g. handgrip<br/>lens calibration: once per camera"] --> P2["Set up 2+ cameras"]
         P2 --> P3["Record hard / risky poses<br/>per doctor's advice<br/>e.g. TUG, 5STS, SPPB<br/>live pose check"]
-        MRI["MRI muscle data<br/>optional"]
+        MRI["MRI muscle data (optional)<br/>doctor uploads → MRI team<br/>→ manifest back"]
     end
 
     WHERE -- home --> H1
@@ -247,34 +258,41 @@ flowchart LR
     end
 
     REC --> D1
-    H7 -- "see a doctor" --> P1
+    H7 -- "patient decides" --> P1
+    H8 -- "appointment date<br/>or high risk" --> P1
     D5 -- "feedback + home program" --> H1
     D5 -- appointment --> P1
 ```
 
 ### Roles and pose tiers
-
+[Anti-Slop Indicator: 70% - Heavy review by Wachi]
 **Roles**
 - **Patient / caregiver**: registers, records at home, sees coarse results (large-font UI)
-- **Nurse**: uses the patient screens at hospital to assist the patient
-- **Doctor**: browses patients, reviews progress, assigns treatment programs, gives feedback
+- **Nurse**: helps the patient use the patient screens at hospital, e.g. typing handgrip / BIA values
+- **Doctor**: browses patients, reviews progress, assigns treatment programs, gives feedback, uploads MRI scans (optional, few patients)
 - **Dev team**: creates accounts (no admin UI)
 
 **Pose tiers** (patient picks freely within unlocked tiers; system suggests poses, e.g. from doctor's program)
 - **Easy**: home, always unlocked
 - **Medium**: home, unlocked only when a caregiver is present
-- **Hard / risky**: hospital only, on doctor's advice, nurse assists
+- **Hard / risky**: unlocked by choosing "Hospital" at the start screen, on doctor's advice, nurse assists
 
 ### Results by role
 
 **Patient: home result**
-- Right after upload: coarse raw data (e.g. reps, time).
-- Later (async): **probability of needing a doctor + confidence %**.
+- After processing: coarse data (e.g. reps, time, 2D angle).
+- New patient (first registration): **see-a-doctor probability + confidence %**, a guard before seeing a doctor.
+- Existing patient: doctor's appointment, or an **urgent risk level** when a hospital check-up is needed soon.
 - Wording is a referral suggestion, never a diagnosis.
 
+**Patient: from doctor**
+- In-app only: feedback, home program, appointment (date + note). No LINE / SMS.
+- Full appointment booking (slots, confirm, reschedule) is a later feature.
+
 **Doctor: progress view**
-- Joint angle graph + ROM vs standard
+- Joint angle graph + ROM vs standard (2D for 1-camera, 3D for 2+ camera recordings)
 - 3D model from keypoints + OpenSim (2+ camera recordings)
+- Video replay with skeleton overlay
 - Optional: muscle mass & function per pose, e.g. before/after medication
 - Warning indicator when the patient **tenses up (เกร็ง) or compensates**, since the numbers alone may look normal
 - Change shown against MDC band (see [clinical-rules.md](clinical-rules.md))
@@ -282,6 +300,7 @@ flowchart LR
 
 ### Classification model
 
+- **One engine, two views:** patient sees a plain referral / risk level; doctor sees the same score with its inputs and reasons
 - **v1:** rule-based score + fuzzy logic for confidence %, rules from the versioned config
 - **Later phase:** ML model
   - Collect data continuously from every recording
@@ -294,3 +313,7 @@ flowchart LR
     Joints and thresholds, decided per pose
 - **Pose list per tier** \
     Which poses are easy / medium / hard
+- **Consent for research / ML data** (ask professor + ethics committee) \
+    Separate care vs research consent, or one combined consent
+- **MRI hand-off** \
+    How uploaded scans reach the MRI team and how the manifest comes back
