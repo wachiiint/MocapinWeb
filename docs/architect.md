@@ -1,0 +1,296 @@
+# Architect
+This chapter will be divide to 4 views
+
+## System Architecture
+[Anti-Slop Indicator: 90% - Reviewed by DeepAung]
+```mermaid
+flowchart LR
+    subgraph Client["Browser"]
+        SPA["React SPA<br/>Patient/Caregiver + Doctor routes<br/>+ in-browser pose check"]
+    end
+
+    subgraph Server["1 GPU server · Docker Compose"]
+        API["Go API<br/>single entry point"]
+        DB[("PostgreSQL")]
+        OBJ[("Object storage<br/>RustFS · S3 API")]
+        subgraph Q["Redis"]
+            JOBS[["job queue"]]
+            RES[["result queue"]]
+        end
+        WK["Pose Engine worker × N<br/>Python · RTMPose → Pose2Sim → OpenSim<br/>FastAPI: /health only"]
+    end
+
+    SPA -- "REST/JSON (HTTPS)" --> API
+    SPA -- "presigned PUT / GET" --> OBJ
+    API -- SQL --> DB
+    API -- "presign, HEAD" --> OBJ
+    API -- push job --> JOBS
+    JOBS -- pop job --> WK
+    WK -- "get video, put outputs" --> OBJ
+    WK -- push result --> RES
+    RES -- consume --> API
+```
+[Anti-Slop Indicator: 70% - Reviewed by DeepAung]
+### Services
+
+| Service | Tech | Job | Owns state |
+|---|---|---|---|
+| Frontend | React + Vite + shadcn/ui | One app; role routes `/patient/*`, `/doctor/*`. Live pose check before/during recording | — |
+| API | Go (Chi + Huma) | Only public entry point: auth, accounts, records, clinical rules, job dispatch | Yes (PostgreSQL) |
+| Database | PostgreSQL | Accounts, patients, recordings, job status, metrics | Yes |
+| Object storage | RustFS (S3-compatible) | Raw videos, calibration files, keypoints, `.trc`/`.mot`, overlay videos | Yes (files) |
+| Queue | Redis | Job queue (API → worker), result queue (worker → API). Work queue: 1 message → 1 consumer | transient |
+| Pose Engine | Python | Stateless worker: pull job → process → push result. Small FastAPI for health checks only | No |
+
+### Communication
+
+| From → To | How | Carries |
+|---|---|---|
+| Frontend → API | REST/JSON, session cookie | Everything except video bytes |
+| Frontend ↔ Object storage | Presigned URL (temporary link, 1 file, 1 action) | Video upload; doctor replay |
+| API → Redis job queue | Push | Small job: recording id, mode, file keys |
+| Worker ↔ Object storage | S3 API | Download video, upload outputs |
+| Worker → Redis result queue | Push | Metrics + output file keys, or error |
+| Frontend → API | Polling every few seconds | Job status `processing → done / failed` |
+
+### Recording lifecycle
+
+1. Frontend asks API for upload links → API returns presigned PUT URLs.
+2. Frontend uploads video(s) straight to object storage.
+3. Frontend reports "upload done" → API checks files (`HEAD`), inserts recording (`processing`), pushes job.
+4. A free worker pops the job, downloads video, runs the pipeline, uploads outputs, pushes result.
+5. API consumes result → applies clinical rules (versioned config) → stores metrics, sets `done`.
+6. Frontend polling sees `done` → shows results; video replay via presigned GET.
+
+### Two pipeline modes
+
+Pipeline depends on camera count, not location.
+
+| | 1 camera | 2+ cameras |
+|---|---|---|
+| Where | Home | Home (optional 2nd camera) · Hospital |
+| Worker pipeline | RTMPose 2D → reps, timing | RTMPose → Pose2Sim 3D → OpenSim angles, ROM |
+| Output | Coarse data + see-a-doctor probability | 3D biomechanics for doctor's progress view |
+
+### Note
+[Anti-Slop Indicator: 70% - Wachi thinks important]
+- **One source of truth for keypoints** \
+    diagnostic numbers come only from server RTMPose. The in-browser model is a quality gate (lighting, framing, extra person), never stored as a result.
+- **Claim-check:** \ 
+    Redis carries keys, not video bytes.
+- **Pose Engine never touches PostgreSQL** \
+    only the API writes clinical data.
+
+### Open decisions : question and options below
+
+- **Object storage product** \
+    RustFS (current) or another S3-compatible store
+- **Redis queue type** (both survive a worker crash) \
+    Streams + consumer groups, or list + `LMOVE`
+- **Browser pose-check model** (owner: Dobby) \
+    MediaPipe, or RTMPose via onnxruntime-web
+- **Home camera setup** (owner: GAn) \
+    1 or 2 cameras at home? Calibrate at home or not? \
+    Affects: "Two pipeline modes" table and the "2nd camera?" branch in User workflow
+- **Clinical scoring location** \
+    Go `usecases/` (current), or a separate scoring service
+
+## Project Directory
+[Anti-Slop Indicator: 80% - Reviewed by Wachi]
+```text
+├── docker-compose.yml          # All services on 1 GPU server: frontend, api, postgres, redis, object storage, pose-engine
+├── .env.example                # Required env vars (no secrets)
+├── config/
+│   └── clinical/               # Versioned cutoffs + MDC/MCID (e.g. AWGS_2025_v1.yaml); read by the scoring layer
+├── docs/
+│   ├── architect.md            # This file
+│   ├── clinical-rules.md       # Clinical guardrails
+│   └── wireframes/             # Standalone POC screens & UI rules (see docs/wireframes/AGENTS.md)
+├── research/                   # Offline Pose2Sim & OpenSim experiments (never imported by backend)
+├── frontend/                   # React + TypeScript + Vite + Tailwind (shadcn/ui)
+│   └── src/
+│       ├── components/ui/      # Reusable shadcn/ui primitives
+│       ├── pose-check/         # In-browser live check (quality gate only)
+│       └── pages/
+│           ├── patient/        # Patient / caregiver routes (large-font UI)
+│           └── doctor/         # Doctor routes
+└── backend/
+    ├── api/                    # Go API, single entry point (Chi + Huma)
+    │   ├── cmd/api/            # Application entrypoint
+    │   └── internal/
+    │       ├── handlers/       # Layer 1: HTTP transport (validate input -> call usecase -> return JSON)
+    │       ├── usecases/       # Layer 2: Business logic & clinical scoring
+    │       ├── repositories/   # Layer 3: PostgreSQL queries
+    │       ├── gateways/       # Layer 4: Outbound clients (Redis queues, object storage)
+    │       └── models/         # Domain & DTO structs
+    └── pose-engine/            # Python worker (RTMPose, Pose2Sim, OpenSim); stateless
+        └── app/                # Job loop + FastAPI /health
+```
+
+**Layer rules** (`handlers` → `usecases` → `repositories` / `gateways`)
+
+| Layer | Does | Never |
+|---|---|---|
+| `handlers/` | Validate input → call usecase → return JSON | SQL, clinical cutoff math |
+| `usecases/` | Business & clinical logic; orchestrates repos + gateways | HTTP details |
+| `repositories/` | Database queries | Business rules |
+| `gateways/` | Talk to Redis + object storage | Business rules |
+| `pose-engine/` | Pose estimation, 3D kinematics, raw metrics | Touch PostgreSQL, clinical judgement |
+
+## Data pipeline
+[Anti-Slop Indicator: 90% - HEAVY review by Wachi, can change later but contact me first]
+
+Runs inside the Pose Engine worker, one job per recording.
+
+```mermaid
+flowchart LR
+    subgraph BR["Browser"]
+        CAM["Record<br/>1 or 2+ cameras"] --> GUARD{"Live check<br/>lighting, framing,<br/>extra person"}
+        GUARD -- fail --> CAM
+        GUARD -- pass --> UP["Upload via<br/>presigned URL"]
+    end
+
+    API["Go API"]
+    OBJ[("Object storage")]
+    JQ[["Redis<br/>job queue"]]
+
+    UP -- video --> OBJ
+    UP -- "upload done" --> API
+    API -- "check file, push job:<br/>id, mode, file keys,<br/>height, weight" --> JQ
+    JQ --> D
+
+    subgraph WK["Pose Engine worker"]
+        D{"Camera count"}
+        D -- 1 --> K1["RTMPose 2D<br/>HALPE_26"] --> F1["Filter"] --> M1["Metrics<br/>reps, timing"]
+        D -- "2+" --> S["Sync<br/>recording timestamps"] --> K2["RTMPose 2D<br/>per camera"]
+        K2 --> T["Triangulate 3D<br/>Pose2Sim + calibration"] --> F2["Filter"]
+        F2 --> IK["OpenSim<br/>scale + inverse kinematics"] --> M2["Metrics<br/>joint angles, ROM, compensation"]
+    end
+
+    OBJ -. "download videos" .-> D
+    WK -. "upload keypoints, .trc, .mot, overlay" .-> OBJ
+    M1 --> RQ[["Redis<br/>result queue"]]
+    M2 --> RQ
+    RQ --> API
+    API -- "clinical scoring" --> DB[("PostgreSQL")]
+```
+
+### Stages
+
+| Stage | Tool | Output |
+|---|---|---|
+| Pose estimation | RTMPose (fine-tuned), HALPE_26: body + feet | 2D keypoints per frame |
+| Sync (2+ cams) | Recording timestamps | Aligned frames |
+| Triangulation (2+ cams) | Pose2Sim + camera calibration | 3D keypoints `.trc` |
+| Filter | Butterworth low-pass (removes jitter) | Smooth keypoints |
+| Inverse kinematics (2+ cams) | OpenSim, Pose2Sim bundled model, scaled by patient height + weight | Joint angles `.mot` |
+| Metrics | Python (numpy/scipy) | Raw numbers only: reps, times, ROM, compensation flags. No clinical judgement |
+
+### Storage layout (per recording)
+
+```text
+recordings/{id}/
+├── raw/          # cam1.mp4, cam2.mp4
+├── keypoints/    # 2D keypoints per camera
+├── pose3d/       # .trc (2+ cams)
+├── kinematics/   # .mot joint angles (2+ cams)
+└── overlay.mp4   # skeleton replay video
+```
+
+### Constraints
+
+- **Timestamp sync needs one shared clock.** \
+    for 2 separate phones drift (1 frame = 33 ms at 30 fps) need careful design + maybe 1 tap record. Leave it to Dobby and GAn for frontend & camera
+- **Job payload adds patient height + weight** for OpenSim scaling.
+- **Muscle model** (gait2392 + MRI muscle data) is a later phase, after joint angles are validated.
+
+## User workflow
+Toogle Pan mode to drag and view entire flow
+```mermaid
+%%{init: {"flowchart": {"useMaxWidth": false}}}%%
+flowchart LR
+    REG(["Register<br/>basic info"]) --> WHERE{"Record Location"}
+
+    subgraph HOME["Patient · Home"]
+        H1{"Is caregiver present?"}
+        H1 -- no --> H2a["Easy poses only"]
+        H1 -- yes --> H2b["Easy + medium poses"]
+        H2a --> H3["Pick pose<br/>free + system suggestion"]
+        H2b --> H3
+        H3 --> H4{"2nd camera?"}
+        H4 -- no --> H5a["Set up 1 camera<br/>default calibration"]
+        H4 -- yes --> H5b["Set up 2 cameras<br/>calibrate cameras together"]
+        H5a --> H5["Record<br/>live pose check"]
+        H5b --> H5
+        H5 --> H6["See coarse raw data"]
+        H6 --> H7["Analysis result (async)<br/>see-a-doctor probability + confidence %"]
+    end
+
+    subgraph HOSP["Patient · Hospital (nurse assists)"]
+        P1["Measure with tools<br/>e.g. handgrip<br/>lens calibration: once per camera"] --> P2["Set up 2+ cameras"]
+        P2 --> P3["Record hard / risky poses<br/>per doctor's advice<br/>e.g. TUG, 5STS, SPPB<br/>live pose check"]
+        MRI["MRI muscle data<br/>optional"]
+    end
+
+    WHERE -- home --> H1
+    WHERE -- hospital --> P1
+    H5 --> REC[("Patient records")]
+    P3 --> REC
+    MRI -.-> REC
+
+    subgraph DOC["Doctor"]
+        D1["Browse patients"] --> D2["Select record<br/>date, pose"]
+        D2 --> D3["Progress view"]
+        D3 --> D4["Assign / adjust<br/>task-specific treatment program"]
+        CLS["Platform classification<br/>helps diagnosis"] -.-> D4
+        D4 --> D5{"Next step"}
+    end
+
+    REC --> D1
+    H7 -- "see a doctor" --> P1
+    D5 -- "feedback + home program" --> H1
+    D5 -- appointment --> P1
+```
+
+### Roles and pose tiers
+
+**Roles**
+- **Patient / caregiver**: registers, records at home, sees coarse results (large-font UI)
+- **Nurse**: uses the patient screens at hospital to assist the patient
+- **Doctor**: browses patients, reviews progress, assigns treatment programs, gives feedback
+- **Dev team**: creates accounts (no admin UI)
+
+**Pose tiers** (patient picks freely within unlocked tiers; system suggests poses, e.g. from doctor's program)
+- **Easy**: home, always unlocked
+- **Medium**: home, unlocked only when a caregiver is present
+- **Hard / risky**: hospital only, on doctor's advice, nurse assists
+
+### Results by role
+
+**Patient: home result**
+- Right after upload: coarse raw data (e.g. reps, time).
+- Later (async): **probability of needing a doctor + confidence %**.
+- Wording is a referral suggestion, never a diagnosis.
+
+**Doctor: progress view**
+- Joint angle graph + ROM vs standard
+- 3D model from keypoints + OpenSim (2+ camera recordings)
+- Optional: muscle mass & function per pose, e.g. before/after medication
+- Warning indicator when the patient **tenses up (เกร็ง) or compensates**, since the numbers alone may look normal
+- Change shown against MDC band (see [clinical-rules.md](clinical-rules.md))
+- Platform classification supports the doctor; it never labels sarcopenia
+
+### Classification model
+
+- **v1:** rule-based score + fuzzy logic for confidence %, rules from the versioned config
+- **Later phase:** ML model
+  - Collect data continuously from every recording
+  - Candidate targets: see-a-doctor referral, defect detection
+  - Multimodal inputs: pose metrics + handgrip + muscle data
+
+### Open decisions
+
+- **Tensing / compensation rules** \
+    Joints and thresholds, decided per pose
+- **Pose list per tier** \
+    Which poses are easy / medium / hard

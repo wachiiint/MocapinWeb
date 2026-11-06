@@ -29,6 +29,10 @@ This document defines the strict UI/UX design standards for all wireframes, prot
    - **Visual-first presentation**: Information must be understood instantly at a glance through clean metric numbers, compact status badges, high-contrast graphs, and direct labels (inspired by shadcn dashboard examples).
    - If a concept can be conveyed with a number, a status pill, or an icon, do not write a sentence for it.
 
+5. **Elderly Accessibility (Patient/Caregiver Screens, Screen 5.6)**:
+   - High contrast, fonts `>= 18px`, touch targets `>= 48px`.
+   - Plain language, no medical jargon.
+
 ---
 
 ## 2. Clinical & Functional Integrity
