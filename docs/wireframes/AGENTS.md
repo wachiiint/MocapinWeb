@@ -1,37 +1,30 @@
 # UI & Wireframe Rules for Agents
 
-This document defines the strict UI/UX design standards for all wireframes, prototypes, and UI screens in this repository. Every agent touching UI files must follow these rules without exception.
+This document defines the strict UI/UX design standards for all wireframes, prototypes, and UI screens in this repository. Every agent touching UI files must follow these rules without exception and read [docs/wireframes/THEME.md](THEME.md) for the exact style tokens.
 
 ---
 
-## 1. Design System & Clinical Aesthetic (shadcn/ui Standard)
+## 1. Design System & Clinical Aesthetic (`MOCAPCARE` Theme + Left Sidebar)
 
 1. **Aesthetic Benchmark**:
-   - Strictly adhere to the **shadcn/ui** clinical design system (Clinical Slate palette, crisp 1px borders `border-slate-200`, clean typography, subtle shadows).
-   - Do NOT use bubbly, pastel, rounded-20px cartoon cards.
-   - Do NOT use heavy purple/neon gradients or dark flashy themes. The platform must feel like professional clinical medical workstation software, not a generic black AI template.
+   - Follow the locked design tokens in [docs/wireframes/THEME.md](THEME.md):
+     - **Outer Backdrop**: Soft sky-to-white gradient (`bg-gradient-to-b from-[#DCEBFF] via-[#EFF5FF] to-[#F8FAFC]`).
+     - **Framed App Shell**: `bg-white/95 rounded-3xl border border-white shadow-[0_16px_48px_rgba(11,101,255,0.06)]` with a **Left Navigation Sidebar (`lg:w-64 bg-[#F4F8FC]`)** and a spacious right content area.
+     - **Cards & Controls**: Soft blue-tinted primary section (`bg-[#F6F9FF] border-blue-100/80`), clean `rounded-2xl` white cards with `w-10 h-10 rounded-full bg-[#EFF5FF] text-[#0B65FF]` icon circles, `rounded-full` pill toggles, and Royal Blue (`#0B65FF`) pill CTA buttons.
+   - Use `'Plus Jakarta Sans'` + `'Anuphan'` for warm, human, high-legibility Thai and Latin typography.
+   - Do NOT use dark cyberpunk themes, heavy purple/neon mesh gradients, or stiff terminal monospace labels.
 
-2. **Zero "AI Slop" & Zero Decorative Emojis**:
-   - **Never use emojis** (such as 👤, 📋, 🩺, 🚀, 💡, 🔥) as section icons or button labels. They look amateur and signal cheap AI-generated templates.
-   - Use **clean, monochrome inline SVG icons** (Lucide style: `stroke="currentColor"`, stroke-width `1.5` or `2`, sized `16x16` or `20x20` with `text-slate-500`).
+2. **Zero "AI Yapping" & Zero Tech Jargon (Mandatory Copy Rule)**:
+   - **No section subtitle filler**: Never write explanatory sentences under section headings telling users why they are filling out a form. A 2–3 word heading (`ข้อมูลผู้ป่วย`, `คัดกรอง 6 ด้าน`) is enough.
+   - **No bilingual parentheses clutter**: Write natural Thai labels (`การเคลื่อนไหว`, `โภชนาการ`, `แรงบีบมือ`) without stuffing English medical terms in parentheses (`(Locomotor Capacity)`, `(Handgrip Strength)`).
+   - **No engineering or guideline leaks**: Never display internal pipeline names (`OpenSim`, `Pose2Sim`, `RTMPose`), guideline codes (`AWGS 2025`, `WHO ICOPE Step 1`), or robotic badges (`DOMAIN 01`, `NEW INTAKE`, `v1.0`) in the UI.
 
-3. **Clinical Color Palette (shadcn Slate + Medical Teal)**:
-   - Page Background: `bg-slate-50` or `bg-white`
-   - Cards/Containers: `bg-white`, `border-slate-200`, `shadow-sm`, `rounded-lg`
-   - Primary Text: `text-slate-900`
-   - Muted/Secondary Text: `text-slate-500`
-   - Primary Action Buttons: `bg-slate-900 text-white hover:bg-slate-800 shadow-sm rounded-md`
-   - Medical Accent / Active State: `text-teal-700 bg-teal-50 border-teal-200`
-   - Inputs: `border-slate-200 bg-white placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-900 rounded-md`
+3. **Zero Emojis & Circular Icon Badges**:
+   - **Never use emojis** (`👤`, `📋`, `🩺`, `✨`) anywhere in UI markup.
+   - Use clean SVG icons inside `w-10 h-10 rounded-full bg-[#EFF5FF] text-[#0B65FF]` circular badges or `16x16` / `20x20` inline icons.
 
-4. **Low-Text & High Visual Clarity (Mandatory UX Rule)**:
-   - **Never overload screens with long text**: Clinicians and users do not want to read lengthy descriptions, tutorial blocks, or wordy AI explanations.
-   - **Visual-first presentation**: Information must be understood instantly at a glance through clean metric numbers, compact status badges, high-contrast graphs, and direct labels (inspired by shadcn dashboard examples).
-   - If a concept can be conveyed with a number, a status pill, or an icon, do not write a sentence for it.
-
-5. **Elderly Accessibility (Patient/Caregiver Screens, Screen 5.6)**:
-   - High contrast, fonts `>= 18px`, touch targets `>= 48px`.
-   - Plain language, no medical jargon.
+4. **Elderly Accessibility (Patient/Caregiver Screens)**:
+   - High contrast, fonts `>= 18px`, touch targets `>= 48px`, plain everyday Thai language.
 
 ---
 
@@ -50,7 +43,20 @@ This document defines the strict UI/UX design standards for all wireframes, prot
 ## 3. Tech Stack & Figma Portability
 
 1. **Pure Tailwind in Standalone HTML**:
-   - Build wireframes with clean HTML + Tailwind CSS using standard shadcn class names.
-   - Code must be structured so that developers can copy-paste it directly into React + shadcn/ui components (`<Card>`, `<Input>`, `<Label>`, `<RadioGroup>`) without redesigning.
+   - Build wireframes with clean HTML + Tailwind CSS so developers can copy-paste markup directly into React + shadcn/ui components without redesigning.
 2. **Figma Friendly**:
    - Layouts must be clean and standard so they can be imported directly into Figma using the `html.to.design` plugin as editable vector frames.
+
+---
+
+## 4. Unslop Redline Audit (Mandatory Before & After Edits)
+
+Before delivering or modifying any wireframe or UI screen, run this 7-pass redline check (use the `unslop-clinical-ui` skill for full details):
+
+1. **Anti-Yapping Copy Pass**: Delete all section subtitle filler sentences, parenthetical English translations, `DOMAIN 01` labels, and `OpenSim`/`AWGS`/`ICOPE` jargon badges.
+2. **Spacing Pass**: Stick to clean Tailwind spacing (`gap-4`, `p-5`, `p-6`, `space-y-8`).
+3. **Color & Surface Pass**: Use the `MOCAPCARE` + Left Sidebar palette from [docs/wireframes/THEME.md](THEME.md) (soft sky canvas, `#F4F8FC` left sidebar, `#F6F9FF` highlight section, white `rounded-2xl` cards, `#0B65FF` Royal Blue primary pills).
+4. **Icons Pass**: Zero emojis. Use crisp inline SVGs inside `bg-[#EFF5FF] text-[#0B65FF]` circular badges.
+5. **Typography Pass**: Use `'Plus Jakarta Sans'` + `'Anuphan'` and `tabular-nums` for numbers.
+6. **Layout Pass**: Framed `rounded-3xl` container with left navigation rail (`lg:w-64`) and right main workspace.
+7. **Clinical Gate**: Verify that video/pose screens never display a "Sarcopenia" diagnosis label and never hardcode clinical cutoffs in the UI.
