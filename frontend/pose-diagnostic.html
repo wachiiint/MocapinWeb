@@ -1,0 +1,46 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pose diagnostic</title>
+<style>body{font:16px system-ui;margin:20px;max-width:850px;background:#f8fafc;color:#0f172a}article{margin:16px 0;padding:16px;border:1px solid #cbd5e1;border-radius:8px;background:white}canvas{display:block;width:180px;max-width:100%;margin-top:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.result{font-size:19px;font-weight:600}</style></head><body>
+<h1>Pose diagnostic</h1><p><strong>Runtime fix: same-frame WASM verification v1</strong></p><p>Public MMDeploy reference photo, actual application worker and existing models. No webcam access, recording or upload. This is not a readiness or clinical assessment.</p>
+<p id="status">Loading reference photo...</p><div id="cases"></div><details><summary>Raw diagnostic results</summary><pre id="output"></pre></details>
+<script type="module">
+import { drawOverlay } from '/src/pose-check/draw-overlay.ts';
+const output=document.querySelector('#output'),status=document.querySelector('#status');
+const log=value=>{output.textContent+=JSON.stringify(value)+'\n'};
+try {
+  const image=new Image();image.src='/diagnostic-person.jpg';await image.decode();
+  log({imageWidth:image.naturalWidth,imageHeight:image.naturalHeight});
+  for(const mode of ['wasm','auto']) {
+    const worker=new Worker(new URL('/src/pose-check/pose.worker.ts',import.meta.url),{type:'module'});
+    const next=()=>new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error('Worker response timed out after 45 seconds')),45000);
+      worker.onmessage=event=>{clearTimeout(timer);resolve(event.data)};
+      worker.onerror=event=>{clearTimeout(timer);reject(new Error(event.message))};
+    });
+    try {
+      status.textContent='Loading '+mode.toUpperCase()+' models...';
+      let response=next();worker.postMessage({type:'init',detectorUrl:'/rtmdet-nano.onnx',poseUrl:'/rtmpose-s-halpe26.onnx',runtimeMode:mode});
+      const initialized=await response;log({mode,init:initialized});
+      if(initialized.type!=='ready')throw new Error(JSON.stringify(initialized));
+      for(const [width,height,mirror] of [[1280,720,false],[720,1280,false],[720,1280,true]]) {
+        status.textContent='Testing '+mode.toUpperCase()+' '+width+' x '+height+'...';
+        const card=document.createElement('article');const heading=document.createElement('h2');heading.textContent=mode.toUpperCase()+' | '+width+' x '+height+(mirror?' | Mirrored':'');card.append(heading);
+        const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+        const ctx=canvas.getContext('2d');ctx.fillStyle='#cbd5e1';ctx.fillRect(0,0,width,height);
+        const scale=Math.min(width*.9/image.naturalWidth,height*.9/image.naturalHeight),dw=image.naturalWidth*scale,dh=image.naturalHeight*scale;
+        if(mirror){ctx.translate(width,0);ctx.scale(-1,1)}
+        ctx.drawImage(image,(width-dw)/2,(height-dh)/2,dw,dh);
+        const bitmap=await createImageBitmap(canvas);response=next();
+        worker.postMessage({type:'frame',bitmap,capturedAt:performance.now(),generation:1},[bitmap]);
+        const reply=await response;if(reply.type!=='result')throw new Error(JSON.stringify(reply));
+        const f=reply.frame,clear=f.keypoints.filter(p=>p.score>=.3).length;
+        const result=document.createElement('p');result.className='result';result.textContent='People: '+f.people.length+' | Keypoints: '+f.keypoints.length+' | Clear: '+clear+' / 26';card.append(result);
+        const provider=document.createElement('p');provider.textContent='Detector: '+f.runtime.detector.provider+' | Pose: '+f.runtime.pose.provider+' | '+Math.round(f.inferenceMs)+' ms';card.append(provider);for(const name of ['detector','pose']){const details=document.createElement('p');details.textContent=name+': '+(f.runtime[name].fallbackReason||('verification '+(f.runtime[name].verification||'not required')));card.append(details)}
+        const overlay=document.createElement('canvas');drawOverlay(overlay,f,.3);ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(overlay,0,0);card.append(canvas);document.querySelector('#cases').append(card);
+        log({mode,width,height,mirror,people:f.people,keypoints:f.keypoints.length,clear,inferenceMs:f.inferenceMs,runtime:f.runtime});
+      }
+    }catch(error){const p=document.createElement('p');p.textContent=mode.toUpperCase()+' error: '+String(error);document.querySelector('#cases').append(p);log({mode,error:String(error)})}
+    finally{worker.terminate()}
+  }
+  status.textContent='Finished. Share the People and Keypoints counts for WASM and AUTO at 720 x 1280.';log({complete:true});
+}catch(error){status.textContent='Diagnostic error: '+String(error);log({error:String(error)})}
+</script></body></html>

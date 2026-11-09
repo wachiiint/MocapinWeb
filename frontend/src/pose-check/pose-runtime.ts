@@ -1,7 +1,7 @@
-import type { InferenceSession } from 'onnxruntime-web/wasm'
 import { decodePeople, decodeSimCC, detectorInput, poseInput } from './image-processing.ts'
 import { POSE_CONFIG, type Pixels, type RuntimeInfo, type RuntimeMode, type StageTimings } from './halpe26.ts'
 import { checkWebGpu, openModelSession, watchGpuLoss, type GpuAccess } from './runtime-backend.ts'
+import { compareDetectorOutput, comparePoseOutput, validateDetector, validatePose } from './runtime-output.ts'
 
 export async function loadPoseRuntime(
   detectorBytes: Uint8Array, poseBytes: Uint8Array, mode: RuntimeMode,
@@ -24,20 +24,17 @@ export async function loadPoseRuntime(
     ort.InferenceSession.create(bytes, { executionProviders: provider === 'webgpu' ? ['webgpu', 'wasm'] : ['wasm'] })
   const detector = await openModelSession('Detector', create(detectorBytes), preferred, capability.reason)
   let cancelWatch = () => {}
-  let watching = false
-  const watchDevice = () => {
-    if (!capability.available || watching) return
-    watching = true
-    // ORT versions may expose a device directly or through a Promise.
-    cancelWatch = watchGpuLoss(Promise.resolve().then(() => ort.env.webgpu.device), onDeviceLost)
-  }
-  if (detector.info.provider === 'webgpu') watchDevice()
   const pose = await openModelSession('Pose', create(poseBytes), preferred, capability.reason).catch(async (error: unknown) => {
     cancelWatch()
     await detector.release().catch(() => undefined)
     throw error
   })
-  if (pose.info.provider === 'webgpu') watchDevice()
+  if (capability.available && (detector.info.provider === 'webgpu' || pose.info.provider === 'webgpu')) {
+    // Ignore late device-loss events after both models have already switched to WASM.
+    cancelWatch = watchGpuLoss(Promise.resolve().then(() => ort.env.webgpu.device), (reason) => {
+      if (detector.info.provider === 'webgpu' || pose.info.provider === 'webgpu') onDeviceLost(reason)
+    })
+  }
   try {
     const detection = await detector.run(new ort.Tensor('float32', new Float32Array(3 * 320 * 320), [1, 3, 320, 320]))
     validateDetector(detection)
@@ -61,7 +58,7 @@ export async function loadPoseRuntime(
       let mark = performance.now()
       const detInput = detectorInput(image)
       timings.detectorPreMs = performance.now() - mark; mark = performance.now()
-      const detection = await detector.run(new ort.Tensor('float32', detInput.data, [1, 3, 320, 320]))
+      const detection = await detector.run(new ort.Tensor('float32', detInput.data, [1, 3, 320, 320]), compareDetectorOutput)
       timings.detectorRunMs = performance.now() - mark; mark = performance.now()
       validateDetector(detection)
       const people = decodePeople(detection.dets.data as Float32Array,
@@ -73,27 +70,16 @@ export async function loadPoseRuntime(
         mark = performance.now()
         const input = poseInput(image, people[0])
         timings.posePreMs = performance.now() - mark; mark = performance.now()
-        const output = await pose.run(new ort.Tensor('float32', input.data, [1, 3, 256, 192]))
+        const output = await pose.run(new ort.Tensor('float32', input.data, [1, 3, 256, 192]), comparePoseOutput)
         timings.poseRunMs = performance.now() - mark; mark = performance.now()
         validatePose(output)
         keypoints = decodeSimCC(output.simcc_x.data as Float32Array, output.simcc_y.data as Float32Array, input.crop)
         timings.poseDecodeMs = performance.now() - mark
       }
+      if (detector.info.provider === 'wasm' && pose.info.provider === 'wasm') cancelWatch()
       return { width: image.width, height: image.height, people, keypoints,
         inferenceMs: performance.now() - start, runtime: info(), timings }
     },
     async release() { cancelWatch(); await pose.release(); await detector.release() },
-  }
-}
-
-function validateDetector(output: InferenceSession.ReturnType) {
-  if (output.dets?.dims.at(-1) !== 5 || output.dets.type !== 'float32' || output.labels?.type !== 'int64') {
-    throw new Error('Unexpected RTMDet outputs. Check the default model files.')
-  }
-}
-function validatePose(output: InferenceSession.ReturnType) {
-  if (output.simcc_x?.dims.join() !== '1,26,384' || output.simcc_y?.dims.join() !== '1,26,512' ||
-    output.simcc_x.type !== 'float32' || output.simcc_y.type !== 'float32') {
-    throw new Error('Expected RTMPose HALPE26 outputs. Check the default pose model.')
   }
 }

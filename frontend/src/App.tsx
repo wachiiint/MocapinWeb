@@ -3,33 +3,33 @@ import { Camera, CameraOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePoseCamera } from '@/pose-check/usePoseCamera'
 import { drawOverlay } from '@/pose-check/draw-overlay'
-import { isClear, KEYPOINT_NAMES, POSE_CONFIG } from '@/pose-check/halpe26'
+import { KEYPOINT_NAMES } from '@/pose-check/halpe26'
 import { RuntimeDebug } from '@/pose-check/RuntimeDebug'
+import { QUALITY_CONFIG } from '@/pose-check/quality-config'
+import { QualityDebug } from '@/pose-check/QualityDebug'
+import { useQualityGate } from '@/pose-check/useQualityGate'
+import { REASONS } from '@/pose-check/quality-checks'
+import { useVideoRecording } from '@/pose-check/useVideoRecording'
+import { RecordingControls } from '@/pose-check/RecordingControls'
 
 function App() {
   const { videoRef, ...camera } = usePoseCamera()
   const overlay = useRef<HTMLCanvasElement>(null)
   const [device, setDevice] = useState('')
   const [mirror, setMirror] = useState(false)
-  const [threshold, setThreshold] = useState<number>(POSE_CONFIG.keypointScore)
+  const [config, setConfig] = useState({ ...QUALITY_CONFIG })
   const { frame, mode, models, error } = camera
   const active = mode === 'camera' || mode === 'starting'
-  const clear = frame?.keypoints.filter((point) => isClear(point, frame.width, frame.height, threshold)).length ?? 0
-  const unclear = frame?.keypoints.flatMap((point, index) =>
-    isClear(point, frame.width, frame.height, threshold) ? [] : [KEYPOINT_NAMES[index]]) ?? []
-  const warnings: { reason: string; action: string }[] = []
-  if (frame?.people.length === 0) warnings.push({ reason: 'No Person Detected', action: 'Step into the camera view.' })
-  if (frame && frame.people.length > 1) warnings.push({ reason: 'Multiple People Detected', action: 'Keep only the person being assessed in view. Pose is shown for the largest person.' })
-  if (unclear.length) warnings.push({ reason: `Keypoints Not Clear: ${unclear.join(', ')}`, action: 'Keep your whole body and feet visible. Adjust your position or lighting.' })
-  if (mode === 'camera' && camera.latency > POSE_CONFIG.staleMs) warnings.push({ reason: 'Pose Updates Too Slow', action: 'Close demanding apps. Stale skeletons are hidden.' })
-  if (camera.stalled) warnings.push({ reason: 'Camera Frames Interrupted', action: 'Check the camera connection and close other camera apps.' })
+  const gate = useQualityGate({ mode, models, error, frame, config, cameraFrameAt: camera.cameraFrameAt })
+  const recording = useVideoRecording({ getStream: camera.getStream, frame, models,
+    checkNow: gate.checkNow, config, cameraActive: mode === 'camera' })
+  const recordingBusy = recording.state !== 'idle'
+  const threshold = config.keypointScore
+  const overlayFrame = gate.showOverlay ? frame : null
 
   useEffect(() => {
-    if (overlay.current) drawOverlay(overlay.current, frame, threshold)
-  }, [frame, threshold])
-
-  const status = error ? 'Error' : models === 'recovering' ? 'Recovering with WASM' : models === 'loading' ? 'Loading Models' : mode === 'off' ? 'Camera Off' :
-    warnings.length ? 'Needs Adjustment' : 'Checking'
+    if (overlay.current) drawOverlay(overlay.current, overlayFrame, threshold)
+  }, [overlayFrame, threshold])
 
   return (
     <main className="min-h-screen bg-slate-50 p-5 text-slate-900 sm:p-8">
@@ -68,38 +68,48 @@ function App() {
                   {camera.devices.map((item, index) => <option key={item.deviceId || index} value={item.deviceId}>{item.label || `Camera ${index + 1}`}</option>)}
                 </select>
               </label>
-              <Button className="min-h-12 rounded-md px-5" disabled={models !== 'ready' || active} onClick={() => void camera.start(device)}>
+              <Button className="min-h-12 rounded-md px-5" disabled={models !== 'ready' || active || recordingBusy} onClick={() => void camera.start(device)}>
                 <Camera size={18} />{mode === 'starting' ? 'Starting Camera…' : 'Start Camera'}
               </Button>
-              <Button className="min-h-12 rounded-md px-5" variant="outline" disabled={mode === 'off'} onClick={camera.stop}>{mode === 'image' ? 'Clear Image' : 'Stop Camera'}</Button>
+              <Button className="min-h-12 rounded-md px-5" variant="outline" disabled={mode === 'off'} onClick={() => { recording.stop('camera-stopped'); camera.stop() }}>{mode === 'image' ? 'Clear Image' : 'Stop Camera'}</Button>
             </div>
           </section>
 
           <aside className="space-y-4">
             <section aria-live="polite" className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Status</h2><span className="rounded-md bg-slate-100 px-3 py-1 text-sm font-medium">{status}</span></div>
+              <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Status</h2><span className="rounded-md bg-slate-100 px-3 py-1 text-sm font-medium">{gate.status}</span></div>
+              <p className="text-sm text-slate-600">Stand facing the camera with your whole body and both feet visible. Keep only one person in view.</p>
               {error && <p role="alert" className="break-words text-sm text-red-700">{error}</p>}
               {models === 'loading' && <p className="text-sm text-slate-600">Loading the default models. The first load may take a moment.</p>}
               {models === 'recovering' && <p className="text-sm text-amber-800">GPU access was lost. Rebuilding with WASM; the camera can stay on.</p>}
               {models === 'error' && <Button variant="outline" onClick={camera.retryModels}>Retry Models</Button>}
               <dl className="grid grid-cols-2 gap-4">
-                <Metric label="Clear Keypoints" value={`${frame ? clear : '—'} / 26`} />
+                <Metric label="Clear Keypoints" value={`${frame ? gate.clearCount : '—'} / 26`} />
                 <Metric label="People Detected" value={frame ? String(frame.people.length) : '—'} />
                 <Metric label="Camera FPS" value={mode === 'camera' ? camera.previewFps.toFixed(1) : '—'} />
                 <Metric label="Pose Updates / s" value={mode === 'camera' ? camera.inferenceFps.toFixed(1) : '—'} />
                 <Metric label="Inference Time" value={camera.latency ? `${camera.latency.toFixed(0)} ms` : '—'} />
                 <Metric label="Frame Size" value={frame ? `${frame.width} × ${frame.height}` : '—'} />
               </dl>
-              {warnings.map((warning) => <div key={warning.reason} className="border-t border-slate-200 pt-3 text-sm"><p className="font-medium text-amber-800">{warning.reason}</p><p className="mt-1 text-slate-600">{warning.action}</p></div>)}
-              {frame && !warnings.length && <p className="text-sm text-teal-800">All 26 keypoints are clear at the selected model-score threshold.</p>}
-              {mode === 'camera' && !frame && <p className="text-sm text-slate-600">Waiting for a recent pose result…</p>}
-              <p className="border-t border-slate-200 pt-3 text-xs leading-5 text-slate-500">Experimental pose visibility only. Lighting, blur, and recording-readiness checks are not available yet. Images stay on this device.</p>
+              {models === 'ready' && !error && (mode === 'camera' || mode === 'image') && <>
+                <p className="text-sm font-medium text-teal-800">{gate.primaryReason ? REASONS[gate.primaryReason.reason].advice :
+                  mode === 'image' ? 'Still image checks complete. Start the camera to check continuous readiness.' :
+                  gate.canStartRecording ? 'Experimental checks passed. Keep this position and lighting.' :
+                  `Keep all checks passing: ${(gate.passingMs / 1000).toFixed(1)} / ${(config.readyHoldMs / 1000).toFixed(1)} s`}</p>
+                {gate.issues.map((issue) => <div key={issue.reason} className="border-t border-slate-200 pt-3 text-sm">
+                  <p className="font-medium text-amber-800">{REASONS[issue.reason].title}</p>
+                  <p className="mt-1 text-slate-600">{REASONS[issue.reason].advice}</p>
+                </div>)}
+              </>}
+              <p className="text-sm">Recording eligibility: <strong>{gate.canStartRecording ? 'Allowed — Experimental' : 'Not Allowed'}</strong></p>
+              <p className="border-t border-slate-200 pt-3 text-xs leading-5 text-slate-500">Experimental quality checks only. Ready does not certify the whole video, clinical suitability, or downstream model success. Scores do not prove that a landmark is visible. Video stays on this device.</p>
             </section>
+            <RecordingControls recording={recording} canStart={gate.canStartRecording} />
             <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="font-semibold">Test without a camera</h2>
               <label className="block space-y-2 text-sm">
                 <span>Test Still Image</span>
-                <input type="file" accept="image/jpeg,image/png" disabled={models !== 'ready' || active || camera.working} className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-slate-200 file:bg-white file:px-3 file:py-2" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void camera.inspectImage(file) }} />
+                <input type="file" accept="image/jpeg,image/png" disabled={models !== 'ready' || active || camera.working || recordingBusy} className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-slate-200 file:bg-white file:px-3 file:py-2" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void camera.inspectImage(file) }} />
               </label>
             </section>
           </aside>
@@ -108,12 +118,12 @@ function App() {
         <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <summary className="cursor-pointer font-semibold">Debug · Runtime, timings & HALPE26 scores</summary>
           <RuntimeDebug mode={camera.runtimeMode} info={camera.runtimeInfo}
-            disabled={active || camera.working || models === 'loading' || models === 'recovering'}
+            disabled={active || camera.working || recordingBusy || models === 'loading' || models === 'recovering'}
             onModeChange={camera.changeRuntimeMode} latest={camera.timing} statistics={camera.statistics}
             sampleCount={camera.sampleCount} recoveryReason={camera.recoveryReason} />
-          <label className="my-4 flex flex-wrap items-center gap-3 text-sm">Experimental model-score threshold
-            <input type="range" min="0.05" max="0.95" step="0.05" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} />{threshold.toFixed(2)}
-          </label>
+          <fieldset disabled={recordingBusy} className="min-w-0">
+            <QualityDebug config={config} onChange={setConfig} gate={gate} />
+          </fieldset>
           <p className="mb-3 text-xs text-slate-500">Model scores are not accuracy percentages. Inference targets 10 updates/s; actual speed depends on this device.</p>
           <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
             {KEYPOINT_NAMES.map((name, index) => <div key={name} className="flex justify-between border-b border-slate-100 py-1 text-sm"><span>{index}. {name}</span><span className="font-mono">{frame?.keypoints[index]?.score.toFixed(3) ?? '—'}</span></div>)}

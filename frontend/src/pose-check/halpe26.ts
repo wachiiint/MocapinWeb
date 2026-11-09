@@ -1,3 +1,5 @@
+import type { PixelQuality } from './quality-pixels.ts'
+
 export const KEYPOINT_NAMES = [
   'Nose', 'Left Eye', 'Right Eye', 'Left Ear', 'Right Ear',
   'Left Shoulder', 'Right Shoulder', 'Left Elbow', 'Right Elbow',
@@ -15,14 +17,14 @@ export const SKELETON = [
 ]
 
 // Engineering thresholds for this demo, not clinical cutoffs.
-export const POSE_CONFIG = { detectorScore: 0.5, keypointScore: 0.3, staleMs: 1000 }
+export const POSE_CONFIG = { detectorScore: 0.5, staleMs: 1000 }
 export const DEFAULT_MODELS = { detector: 'rtmdet-nano.onnx', pose: 'rtmpose-s-halpe26.onnx' }
 export type Box = { x1: number; y1: number; x2: number; y2: number; score: number }
 export type Keypoint = { x: number; y: number; score: number }
 export type Pixels = { width: number; height: number; data: Uint8ClampedArray }
 export type RuntimeMode = 'auto' | 'wasm'
 export type Provider = 'webgpu' | 'wasm'
-export type ModelRuntime = { provider: Provider; revision: number; fallbackReason?: string }
+export type ModelRuntime = { provider: Provider; revision: number; fallbackReason?: string; verification?: 'pending' | 'passed' }
 export type RuntimeInfo = { detector: ModelRuntime; pose: ModelRuntime; revision: number }
 export type StageTimings = {
   readPixelsMs: number; detectorPreMs: number; detectorRunMs: number; detectorDecodeMs: number
@@ -33,6 +35,8 @@ export type PoseFrame = {
   width: number; height: number; people: Box[]; keypoints: Keypoint[]
   inferenceMs: number; capturedAt: number; generation: number
   runtime: RuntimeInfo; timings: StageTimings
+  quality: PixelQuality
+  configVersion: string
 }
 export type WorkerRequest =
   | { type: 'init'; detectorUrl: string; poseUrl: string; runtimeMode: RuntimeMode }

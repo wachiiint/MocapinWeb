@@ -1,0 +1,1324 @@
+{
+  "schemaVersion": 1,
+  "scope": "single-frame-quality",
+  "metricVersion": "video-quality-experimental-v1",
+  "config": {
+    "version": "video-quality-experimental-v1",
+    "keypointScore": 0.3,
+    "edgeMargin": 0.03,
+    "minPersonHeight": 0.45,
+    "minPersonWidth": 0.12,
+    "minPersonLuma": 45,
+    "clippedLuma": 245,
+    "maxClippedFraction": 0.2,
+    "backlightDelta": 55,
+    "backlightPersonMax": 120,
+    "minSharpness": 35,
+    "cameraStallMs": 1000,
+    "maxFrameAgeMs": 1000,
+    "readyHoldMs": 2000
+  },
+  "results": [
+    {
+      "split": "calibration",
+      "synthetic": {
+        "total": 11,
+        "good": 1,
+        "bad": 10,
+        "goodPassed": 1,
+        "goodWarned": 0,
+        "badPassed": 0,
+        "badBlocked": 10,
+        "unknown": 0,
+        "falseAcceptanceRate": 0,
+        "falseWarningRate": 0,
+        "sourceGroups": 1
+      },
+      "human": {
+        "total": 0,
+        "good": 0,
+        "bad": 0,
+        "goodPassed": 0,
+        "goodWarned": 0,
+        "badPassed": 0,
+        "badBlocked": 0,
+        "unknown": 0,
+        "falseAcceptanceRate": null,
+        "falseWarningRate": null,
+        "sourceGroups": 0
+      }
+    },
+    {
+      "split": "acceptance",
+      "synthetic": {
+        "total": 11,
+        "good": 1,
+        "bad": 10,
+        "goodPassed": 1,
+        "goodWarned": 0,
+        "badPassed": 0,
+        "badBlocked": 10,
+        "unknown": 0,
+        "falseAcceptanceRate": 0,
+        "falseWarningRate": 0,
+        "sourceGroups": 1
+      },
+      "human": {
+        "total": 0,
+        "good": 0,
+        "bad": 0,
+        "goodPassed": 0,
+        "goodWarned": 0,
+        "badPassed": 0,
+        "badBlocked": 0,
+        "unknown": 0,
+        "falseAcceptanceRate": null,
+        "falseWarningRate": null,
+        "sourceGroups": 0
+      }
+    }
+  ],
+  "samples": [
+    {
+      "id": "calibration-good",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "good",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; good; supplied HALPE26 geometry, no model inference.",
+      "predicted": "pass",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 109.99948730468752
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": -0.003933442898897965
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 2799.395465732364
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": []
+    },
+    {
+      "id": "calibration-dark",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; dark; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "fail",
+          "reason": "DARK",
+          "value": 20.666687011718746
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "fail",
+          "reason": "BACKLIGHT",
+          "value": 87.2814202037284
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 205.7815180545963
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "DARK",
+        "BACKLIGHT"
+      ]
+    },
+    {
+      "id": "calibration-clipped",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; clipped; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 248.96266784667972
+        },
+        {
+          "state": "fail",
+          "reason": "CLIPPED",
+          "value": 0.98443603515625
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": -135.77311944728947
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 118.16339302943899
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "CLIPPED"
+      ]
+    },
+    {
+      "id": "calibration-backlight",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; backlight; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 71.18519287109375
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "fail",
+          "reason": "BACKLIGHT",
+          "value": 155.16675072646717
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 797.2718958338637
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "BACKLIGHT"
+      ]
+    },
+    {
+      "id": "calibration-blur",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; blur; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 110
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0
+        },
+        {
+          "state": "fail",
+          "reason": "BLUR",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "BLUR"
+      ]
+    },
+    {
+      "id": "calibration-feet-out",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; feet-out; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "fail",
+          "reason": "FRAMING",
+          "value": -0.006250000000000089
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 109.99948730468752
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": -0.003933442898897965
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 2799.395465732364
+        },
+        {
+          "state": "fail",
+          "reason": "KEYPOINTS",
+          "value": 25
+        }
+      ],
+      "reasonCodes": [
+        "FRAMING",
+        "KEYPOINTS"
+      ]
+    },
+    {
+      "id": "calibration-near-edge",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; near-edge; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "fail",
+          "reason": "FRAMING",
+          "value": 0.01
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 109.99961547851565
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": -0.006516109430478423
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 3570.3368574200063
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "FRAMING"
+      ]
+    },
+    {
+      "id": "calibration-far",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; far; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.35
+        },
+        {
+          "state": "fail",
+          "reason": "PERSON_SMALL",
+          "value": 0.3
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 110
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 88.0031179138322
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "PERSON_SMALL"
+      ]
+    },
+    {
+      "id": "calibration-occluded",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; occluded; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "unknown",
+          "reason": "FRAMING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 109.99948730468752
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": -0.003933442898897965
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 2799.395465732364
+        },
+        {
+          "state": "fail",
+          "reason": "KEYPOINTS",
+          "value": 25
+        }
+      ],
+      "reasonCodes": [
+        "FRAMING_UNKNOWN",
+        "KEYPOINTS"
+      ]
+    },
+    {
+      "id": "calibration-no-person",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; no-person; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "fail",
+          "reason": "NO_PERSON",
+          "value": 0
+        },
+        {
+          "state": "unknown",
+          "reason": "FRAMING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "SIZE_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "LIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "CLIPPING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BACKLIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BLUR_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "KEYPOINTS_UNKNOWN",
+          "value": null
+        }
+      ],
+      "reasonCodes": [
+        "NO_PERSON",
+        "FRAMING_UNKNOWN",
+        "SIZE_UNKNOWN",
+        "LIGHT_UNKNOWN",
+        "CLIPPING_UNKNOWN",
+        "BACKLIGHT_UNKNOWN",
+        "BLUR_UNKNOWN",
+        "KEYPOINTS_UNKNOWN"
+      ]
+    },
+    {
+      "id": "calibration-multiple",
+      "sourceGroup": "calibration-procedural-scene",
+      "split": "calibration",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 128x160 grayscale pattern; multiple; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "fail",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 2
+        },
+        {
+          "state": "unknown",
+          "reason": "FRAMING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "SIZE_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "LIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "CLIPPING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BACKLIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BLUR_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "KEYPOINTS_UNKNOWN",
+          "value": null
+        }
+      ],
+      "reasonCodes": [
+        "MULTIPLE_PEOPLE",
+        "FRAMING_UNKNOWN",
+        "SIZE_UNKNOWN",
+        "LIGHT_UNKNOWN",
+        "CLIPPING_UNKNOWN",
+        "BACKLIGHT_UNKNOWN",
+        "BLUR_UNKNOWN",
+        "KEYPOINTS_UNKNOWN"
+      ]
+    },
+    {
+      "id": "acceptance-good",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "good",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; good; supplied HALPE26 geometry, no model inference.",
+      "predicted": "pass",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 110
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 3513.4069013895323
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": []
+    },
+    {
+      "id": "acceptance-dark",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; dark; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "fail",
+          "reason": "DARK",
+          "value": 20.400341796875008
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "fail",
+          "reason": "BACKLIGHT",
+          "value": 87.98118449885669
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 228.09558323220637
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "DARK",
+        "BACKLIGHT"
+      ]
+    },
+    {
+      "id": "acceptance-clipped",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; clipped; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 249.37724609375
+        },
+        {
+          "state": "fail",
+          "reason": "CLIPPED",
+          "value": 0.9766845703125
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": -136.85962033155488
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 75.48340048506046
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "CLIPPED"
+      ]
+    },
+    {
+      "id": "acceptance-backlight",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; backlight; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 70.71171875
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "fail",
+          "reason": "BACKLIGHT",
+          "value": 156.41099466463413
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 905.240111773395
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "BACKLIGHT"
+      ]
+    },
+    {
+      "id": "acceptance-blur",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; blur; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.06
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 110
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0
+        },
+        {
+          "state": "fail",
+          "reason": "BLUR",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "BLUR"
+      ]
+    },
+    {
+      "id": "acceptance-feet-out",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; feet-out; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "fail",
+          "reason": "FRAMING",
+          "value": -0.005208333333333259
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 110
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 3513.4069013895323
+        },
+        {
+          "state": "fail",
+          "reason": "KEYPOINTS",
+          "value": 25
+        }
+      ],
+      "reasonCodes": [
+        "FRAMING",
+        "KEYPOINTS"
+      ]
+    },
+    {
+      "id": "acceptance-near-edge",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; near-edge; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "fail",
+          "reason": "FRAMING",
+          "value": 0.01
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 109.99999023437493
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0.000009765625065938366
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 4514.347270610345
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "FRAMING"
+      ]
+    },
+    {
+      "id": "acceptance-far",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; far; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "pass",
+          "reason": "FRAMING",
+          "value": 0.3499999999999999
+        },
+        {
+          "state": "fail",
+          "reason": "PERSON_SMALL",
+          "value": 0.3000000000000001
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 110
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 175.80239040060468
+        },
+        {
+          "state": "pass",
+          "reason": "KEYPOINTS",
+          "value": 26
+        }
+      ],
+      "reasonCodes": [
+        "PERSON_SMALL"
+      ]
+    },
+    {
+      "id": "acceptance-occluded",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; occluded; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "pass",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 1
+        },
+        {
+          "state": "unknown",
+          "reason": "FRAMING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "pass",
+          "reason": "PERSON_SMALL",
+          "value": 0.8799999999999999
+        },
+        {
+          "state": "pass",
+          "reason": "DARK",
+          "value": 110
+        },
+        {
+          "state": "pass",
+          "reason": "CLIPPED",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BACKLIGHT",
+          "value": 0
+        },
+        {
+          "state": "pass",
+          "reason": "BLUR",
+          "value": 3513.4069013895323
+        },
+        {
+          "state": "fail",
+          "reason": "KEYPOINTS",
+          "value": 25
+        }
+      ],
+      "reasonCodes": [
+        "FRAMING_UNKNOWN",
+        "KEYPOINTS"
+      ]
+    },
+    {
+      "id": "acceptance-no-person",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; no-person; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "fail",
+          "reason": "NO_PERSON",
+          "value": 0
+        },
+        {
+          "state": "unknown",
+          "reason": "FRAMING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "SIZE_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "LIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "CLIPPING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BACKLIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BLUR_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "KEYPOINTS_UNKNOWN",
+          "value": null
+        }
+      ],
+      "reasonCodes": [
+        "NO_PERSON",
+        "FRAMING_UNKNOWN",
+        "SIZE_UNKNOWN",
+        "LIGHT_UNKNOWN",
+        "CLIPPING_UNKNOWN",
+        "BACKLIGHT_UNKNOWN",
+        "BLUR_UNKNOWN",
+        "KEYPOINTS_UNKNOWN"
+      ]
+    },
+    {
+      "id": "acceptance-multiple",
+      "sourceGroup": "acceptance-procedural-scene",
+      "split": "acceptance",
+      "expected": "bad",
+      "labelSource": "synthetic",
+      "labelledBy": "procedural-fixture-v1",
+      "provenance": "Generated 160x192 grayscale pattern; multiple; supplied HALPE26 geometry, no model inference.",
+      "predicted": "fail",
+      "checks": [
+        {
+          "state": "fail",
+          "reason": "MULTIPLE_PEOPLE",
+          "value": 2
+        },
+        {
+          "state": "unknown",
+          "reason": "FRAMING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "SIZE_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "LIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "CLIPPING_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BACKLIGHT_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "BLUR_UNKNOWN",
+          "value": null
+        },
+        {
+          "state": "unknown",
+          "reason": "KEYPOINTS_UNKNOWN",
+          "value": null
+        }
+      ],
+      "reasonCodes": [
+        "MULTIPLE_PEOPLE",
+        "FRAMING_UNKNOWN",
+        "SIZE_UNKNOWN",
+        "LIGHT_UNKNOWN",
+        "CLIPPING_UNKNOWN",
+        "BACKLIGHT_UNKNOWN",
+        "BLUR_UNKNOWN",
+        "KEYPOINTS_UNKNOWN"
+      ]
+    }
+  ],
+  "limitations": "Frame-level engineering checks only. Unknown blocks passing. Synthetic results do not validate real video, model parity, readiness, clinical suitability or mobile devices. No whole-clip decision is made."
+}

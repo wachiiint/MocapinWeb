@@ -1,5 +1,7 @@
 import { loadPoseRuntime } from './pose-runtime'
 import type { WorkerRequest, WorkerReply } from './halpe26'
+import { measurePixelQuality } from './quality-pixels'
+import { QUALITY_CONFIG } from './quality-config'
 
 let runtime: Awaited<ReturnType<typeof loadPoseRuntime>> | undefined
 let busy = false
@@ -36,8 +38,10 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       const readPixelsMs = performance.now() - started
       const result = await runtime.infer(pixels)
       result.timings.readPixelsMs = readPixelsMs
+      const quality = measurePixelQuality(pixels, result.people)
       result.timings.totalWorkerMs = performance.now() - started
-      reply({ type: 'result', frame: { ...result, capturedAt: message.capturedAt, generation: message.generation } })
+      reply({ type: 'result', frame: { ...result, quality, configVersion: QUALITY_CONFIG.version,
+        capturedAt: message.capturedAt, generation: message.generation } })
     }
   } catch (error) {
     reply({ type: 'error', message: error instanceof Error ? error.message : 'Pose processing failed.' })
