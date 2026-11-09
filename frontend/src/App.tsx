@@ -9,8 +9,10 @@ import { QUALITY_CONFIG } from '@/pose-check/quality-config'
 import { QualityDebug } from '@/pose-check/QualityDebug'
 import { useQualityGate } from '@/pose-check/useQualityGate'
 import { REASONS } from '@/pose-check/quality-checks'
+import { QUALITY_ADVICE } from '@/pose-check/quality-advice'
 import { useVideoRecording } from '@/pose-check/useVideoRecording'
 import { RecordingControls } from '@/pose-check/RecordingControls'
+import { QualityChecklist } from '@/pose-check/QualityChecklist'
 
 function App() {
   const { videoRef, ...camera } = usePoseCamera()
@@ -24,6 +26,18 @@ function App() {
   const recording = useVideoRecording({ getStream: camera.getStream, frame, models,
     checkNow: gate.checkNow, config, cameraActive: mode === 'camera' })
   const recordingBusy = recording.state !== 'idle'
+  const statusText = recording.state === 'recording' ? 'กำลังอัด' : recording.state === 'stopping' ? 'กำลังบันทึกวิดีโอ' :
+    recording.result ? 'อัดเสร็จแล้ว' : recording.error ? 'เริ่มอัดไม่ได้' :
+    recording.countdownSeconds !== null ? `เริ่มอัดใน ${recording.countdownSeconds} วินาที` :
+    error || models === 'error' ? 'กล้องหรือระบบตรวจมีปัญหา' : models !== 'ready' ? 'กำลังเตรียมระบบตรวจ' :
+    mode === 'off' ? 'กรุณาเปิดกล้อง' : mode === 'image' ? 'ตรวจภาพตัวอย่าง' :
+    gate.status === 'Needs Adjustment' ? 'กรุณาปรับตำแหน่ง' : 'กำลังตรวจความพร้อม'
+  const advice = recording.result ? 'ดาวน์โหลดวิดีโอก่อนล้างเพื่ออัดใหม่' : recording.error ? 'ตรวจกล้องแล้วกดลองใหม่' :
+    models === 'recovering' ? 'กำลังกู้คืนระบบตรวจ กรุณารอสักครู่' : models !== 'ready' ? 'กรุณารอให้ระบบพร้อม' :
+    mode === 'off' ? 'เมื่อพร้อม ระบบจะนับถอยหลังแล้วอัดให้อัตโนมัติ' :
+    error ? 'ตรวจการเชื่อมต่อกล้อง แล้วเปิดกล้องอีกครั้ง' :
+    gate.primaryReason ? QUALITY_ADVICE[gate.primaryReason.reason] :
+    mode === 'image' ? 'ภาพตัวอย่างไม่เริ่มอัดวิดีโอ กรุณาเปิดกล้อง' : 'อยู่ในตำแหน่งนี้ ให้เห็นทั้งตัวและเท้าทั้งสองข้าง'
   const threshold = config.keypointScore
   const overlayFrame = gate.showOverlay ? frame : null
 
@@ -32,84 +46,61 @@ function App() {
   }, [overlayFrame, threshold])
 
   return (
-    <main className="min-h-screen bg-slate-50 p-5 text-slate-900 sm:p-8">
+    <main className="min-h-screen bg-slate-50 p-5 text-lg text-slate-900 sm:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5">
           <div>
-            <p className="text-sm font-medium text-slate-500">Mocapin · Pose Check</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Realtime camera check</h1>
+            <p className="text-sm font-medium text-slate-500">MOCAPCARE</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">เตรียมอัดวิดีโอ</h1>
           </div>
-          <span className="rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-800">RTMPose-s HALPE26 · {camera.runtimeMode === 'auto' ? 'Auto' : 'WASM'}</span>
         </header>
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
           <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-4">
-              <h2 className="font-semibold">{mode === 'image' ? 'Still image test' : 'Camera preview'}</h2>
-              <label className="flex min-h-10 items-center gap-2 text-sm">
-                <input type="checkbox" checked={mirror} onChange={(event) => setMirror(event.target.checked)} />Mirror preview
+              <h2 className="font-semibold">{mode === 'image' ? 'ภาพตัวอย่าง' : 'ภาพจากกล้อง'}</h2>
+              <label className="flex min-h-12 items-center gap-2 text-lg">
+                <input type="checkbox" checked={mirror} onChange={(event) => setMirror(event.target.checked)} />กลับภาพกระจก
               </label>
             </div>
             <div className="relative min-h-60 bg-slate-950" style={{ transform: mirror ? 'scaleX(-1)' : undefined }}>
               <video ref={videoRef} autoPlay muted playsInline className={`w-full ${mode === 'camera' ? 'block' : 'hidden'}`} />
-              {camera.imageUrl && <img src={camera.imageUrl} alt="Local still image for pose testing" className="block w-full" />}
+              {camera.imageUrl && <img src={camera.imageUrl} alt="ภาพตัวอย่างสำหรับตรวจความพร้อม" className="block w-full" />}
               {!active && mode !== 'image' && (
                 <div className="flex aspect-video flex-col items-center justify-center gap-3 text-slate-300" style={{ transform: mirror ? 'scaleX(-1)' : undefined }}>
-                  <CameraOff size={32} strokeWidth={1.5} /><p>Start your camera to see live pose detection.</p>
+                  <CameraOff size={32} strokeWidth={1.5} /><p>เปิดกล้องเพื่อเริ่มตรวจความพร้อม</p>
                 </div>
               )}
               <canvas ref={overlay} className="pointer-events-none absolute inset-0 h-full w-full" />
             </div>
+            <div role="status" aria-live="polite" aria-atomic="true" className={`space-y-2 border-y p-5 ${recording.state === 'recording' ? 'border-red-200 bg-red-50 text-red-900' : recording.countdownSeconds !== null ? 'border-blue-200 bg-blue-50 text-blue-900' : 'border-slate-200 bg-slate-50 text-slate-900'}`}>
+              <p className="text-2xl font-bold tabular-nums sm:text-3xl">{statusText}</p>
+              <p className="text-lg">{advice}</p>
+              {models === 'error' && <Button className="min-h-12 text-lg" variant="outline" onClick={camera.retryModels}>ลองตรวจใหม่</Button>}
+            </div>
             <div className="flex flex-wrap items-end gap-3 p-4">
-              <label className="min-w-48 flex-1 space-y-1 text-sm font-medium">
-                <span>Camera</span>
+              <label className="min-w-48 flex-1 space-y-1 text-lg font-medium">
+                <span>กล้อง</span>
                 <select value={device} disabled={active} onChange={(event) => setDevice(event.target.value)} className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3">
-                  <option value="">Default camera</option>
-                  {camera.devices.map((item, index) => <option key={item.deviceId || index} value={item.deviceId}>{item.label || `Camera ${index + 1}`}</option>)}
+                  <option value="">กล้องเริ่มต้น</option>
+                  {camera.devices.map((item, index) => <option key={item.deviceId || index} value={item.deviceId}>{item.label || `กล้อง ${index + 1}`}</option>)}
                 </select>
               </label>
-              <Button className="min-h-12 rounded-md px-5" disabled={models !== 'ready' || active || recordingBusy} onClick={() => void camera.start(device)}>
-                <Camera size={18} />{mode === 'starting' ? 'Starting Camera…' : 'Start Camera'}
+              <Button className="min-h-12 rounded-full bg-[#0B65FF] px-5 text-lg text-white hover:bg-[#0052CC]" disabled={models !== 'ready' || active || recordingBusy} onClick={() => void camera.start(device)}>
+                <Camera size={18} />{mode === 'starting' ? 'กำลังเปิดกล้อง…' : 'เปิดกล้อง'}
               </Button>
-              <Button className="min-h-12 rounded-md px-5" variant="outline" disabled={mode === 'off'} onClick={() => { recording.stop('camera-stopped'); camera.stop() }}>{mode === 'image' ? 'Clear Image' : 'Stop Camera'}</Button>
+              <Button className="min-h-12 rounded-full px-5 text-lg" variant="outline" disabled={mode === 'off'} onClick={() => { recording.stop('camera-stopped'); camera.stop() }}>{mode === 'image' ? 'ล้างภาพ' : 'ปิดกล้อง'}</Button>
             </div>
           </section>
 
           <aside className="space-y-4">
-            <section aria-live="polite" className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Status</h2><span className="rounded-md bg-slate-100 px-3 py-1 text-sm font-medium">{gate.status}</span></div>
-              <p className="text-sm text-slate-600">Stand facing the camera with your whole body and both feet visible. Keep only one person in view.</p>
-              {error && <p role="alert" className="break-words text-sm text-red-700">{error}</p>}
-              {models === 'loading' && <p className="text-sm text-slate-600">Loading the default models. The first load may take a moment.</p>}
-              {models === 'recovering' && <p className="text-sm text-amber-800">GPU access was lost. Rebuilding with WASM; the camera can stay on.</p>}
-              {models === 'error' && <Button variant="outline" onClick={camera.retryModels}>Retry Models</Button>}
-              <dl className="grid grid-cols-2 gap-4">
-                <Metric label="Clear Keypoints" value={`${frame ? gate.clearCount : '—'} / 26`} />
-                <Metric label="People Detected" value={frame ? String(frame.people.length) : '—'} />
-                <Metric label="Camera FPS" value={mode === 'camera' ? camera.previewFps.toFixed(1) : '—'} />
-                <Metric label="Pose Updates / s" value={mode === 'camera' ? camera.inferenceFps.toFixed(1) : '—'} />
-                <Metric label="Inference Time" value={camera.latency ? `${camera.latency.toFixed(0)} ms` : '—'} />
-                <Metric label="Frame Size" value={frame ? `${frame.width} × ${frame.height}` : '—'} />
-              </dl>
-              {models === 'ready' && !error && (mode === 'camera' || mode === 'image') && <>
-                <p className="text-sm font-medium text-teal-800">{gate.primaryReason ? REASONS[gate.primaryReason.reason].advice :
-                  mode === 'image' ? 'Still image checks complete. Start the camera to check continuous readiness.' :
-                  gate.canStartRecording ? 'Experimental checks passed. Keep this position and lighting.' :
-                  `Keep all checks passing: ${(gate.passingMs / 1000).toFixed(1)} / ${(config.readyHoldMs / 1000).toFixed(1)} s`}</p>
-                {gate.issues.map((issue) => <div key={issue.reason} className="border-t border-slate-200 pt-3 text-sm">
-                  <p className="font-medium text-amber-800">{REASONS[issue.reason].title}</p>
-                  <p className="mt-1 text-slate-600">{REASONS[issue.reason].advice}</p>
-                </div>)}
-              </>}
-              <p className="text-sm">Recording eligibility: <strong>{gate.canStartRecording ? 'Allowed — Experimental' : 'Not Allowed'}</strong></p>
-              <p className="border-t border-slate-200 pt-3 text-xs leading-5 text-slate-500">Experimental quality checks only. Ready does not certify the whole video, clinical suitability, or downstream model success. Scores do not prove that a landmark is visible. Video stays on this device.</p>
-            </section>
             <RecordingControls recording={recording} canStart={gate.canStartRecording} />
+            <QualityChecklist gate={gate} />
             <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-semibold">Test without a camera</h2>
-              <label className="block space-y-2 text-sm">
-                <span>Test Still Image</span>
-                <input type="file" accept="image/jpeg,image/png" disabled={models !== 'ready' || active || camera.working || recordingBusy} className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-slate-200 file:bg-white file:px-3 file:py-2" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void camera.inspectImage(file) }} />
+              <h2 className="font-semibold">ทดสอบด้วยภาพ</h2>
+              <label className="block space-y-2 text-lg">
+                <span>เลือกภาพตัวอย่าง</span>
+                <input type="file" accept="image/jpeg,image/png" disabled={models !== 'ready' || active || camera.working || recordingBusy} className="block min-h-12 w-full text-lg file:min-h-12 file:mr-2 file:rounded-md file:border file:border-slate-200 file:bg-white file:px-3 file:py-2" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void camera.inspectImage(file) }} />
               </label>
             </section>
           </aside>
@@ -117,6 +108,17 @@ function App() {
 
         <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <summary className="cursor-pointer font-semibold">Debug · Runtime, timings & HALPE26 scores</summary>
+          <p className="my-3 text-sm">{gate.status} · RTMPose-s HALPE26 · {camera.runtimeMode}</p>
+          {error && <p role="alert" className="break-words text-red-700">{error}</p>}
+          <dl className="grid grid-cols-2 gap-4">
+            <Metric label="Clear Keypoints" value={`${frame ? gate.clearCount : '—'} / 26`} />
+            <Metric label="People Detected" value={frame ? String(frame.people.length) : '—'} />
+            <Metric label="Camera FPS" value={mode === 'camera' ? camera.previewFps.toFixed(1) : '—'} />
+            <Metric label="Pose Updates / s" value={mode === 'camera' ? camera.inferenceFps.toFixed(1) : '—'} />
+            <Metric label="Inference Time" value={camera.latency ? `${camera.latency.toFixed(0)} ms` : '—'} />
+            <Metric label="Frame Size" value={frame ? `${frame.width} × ${frame.height}` : '—'} />
+          </dl>
+          {gate.issues.map((issue) => <p key={issue.reason} className="my-2 text-sm">{REASONS[issue.reason].title}: {REASONS[issue.reason].advice}</p>)}
           <RuntimeDebug mode={camera.runtimeMode} info={camera.runtimeInfo}
             disabled={active || camera.working || recordingBusy || models === 'loading' || models === 'recovering'}
             onModeChange={camera.changeRuntimeMode} latest={camera.timing} statistics={camera.statistics}
