@@ -13,6 +13,37 @@ A rule to obey for development this project <span style="color:red">(PLEASE READ
  เมิจเอง รีเบสเอง มาลองผิดลองถูกไปพร้อมกัน
 4. ถ้าหากมีอัพเดท หรือข้อสงสัย ติดต่อ Wachi ได้ 24/7 จะได้ช่วยดูด้วยกัน ไม่ต้องเกรงใจ
 5. ถ้าหากมีไฟล์อื่น ๆ ที่ใช้ทด หรือเติม Context ให้เไ ให้เอาใส่ไว้ใน `./temp` อ่านเองคนเดียว
+6. Anti-Slop tag: ส่วนที่เราเขียน (โค้ดใส่ใน comment, doc ใส่ตรง ๆ) แปะ `[Anti-Slop: 60% - @owner - note]` \
+ % = เรารีวิว/มั่นใจส่วนนั้นแค่ไหน ใส่ตรงไหน ระดับเท่าไหร่ ใช้วิจารณญาณเอง \
+ ใครแก้ส่วนที่มี tag ต้องอัพเดท tag ด้วย \
+ เไ ห้ามใส่ % เอง ทำได้แค่เตือนให้เจ้าของใส่
+
+## Agent setup (Codex + Claude Code)
+[Anti-Slop: 95% - @wachi - กูดูแล้ว ทำตามด้วย]
+- `AGENTS.md` (root + folders): rules every agent must follow, always loaded by Codex + Claude Code
+- `.agents/skills/`: skills = optional step-by-step procedures. The real files, read by Codex
+- `.claude/skills`: symlink → `.agents/skills`, so Claude Code reads the same files
+- `.claude/settings.json`: blocks Claude Code from `git commit` / `git push`
+- `.codex/rules/no-git.rules`: same block for Codex (untested)
+- `skills-lock.json`: source + hash of each installed skill, used by `npx skills`
+
+Rules
+- Agent rule that must always hold belongs in `AGENTS.md`; an optional procedure belongs in a skill. NO duplicate rule is allowed.
+- Before adding a skill ask @Wachi first, then run `npx skills add <owner/repo> -a codex --skill <name>`. Commit the skill folder together with `skills-lock.json`.
+- Do not edit skills installed from another repository. Put project-specific rules in `AGENTS.md` instead.
+- Do not create a separate `.claude/skills` folder. It must stay a symlink.
+
+Symlink Setup
+```bash
+# Windows
+git config --global core.symlinks true # +enable Developer Mode
+
+rm .claude/skills
+git checkout -- .claude/skills
+
+# Linux / MacOS
+# nothing todo, symlink conserve by git clone
+```
 
 ## Responsible
 1. Wachi  - PM, architecture design

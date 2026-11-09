@@ -1,9 +1,9 @@
 # Architect
 This chapter is divided into 4 views
-[Anti-Slop Indicator: 90% - ALL HEAVY Reviewed by Wachi]
+[Anti-Slop: 90% - @wachi - ALL HEAVY Reviewed by Wachi]
 
 ## System Architecture
-[Anti-Slop Indicator: 90% - Reviewed by DeepAung]
+[Anti-Slop: 90% - @wachi - Reviewed by DeepAung]
 ```mermaid
 flowchart LR
     subgraph Client["Browser"]
@@ -74,7 +74,7 @@ Pipeline depends on camera count, not location.
 | Output | Coarse data + 2D angles (labeled 2D) | 3D biomechanics for doctor's progress view |
 
 ### Note
-[Anti-Slop Indicator: 70% - Wachi thinks important]
+[Anti-Slop: 70% - @wachi - Maybe important]
 - **One source of truth for keypoints** \
     measurement numbers come only from server RTMPose. The in-browser model is a quality gate (lighting, framing, extra person), never stored as a result.
 - **Claim-check:** \ 
@@ -101,7 +101,7 @@ Pipeline depends on camera count, not location.
     Object storage, baked into Docker image, or shared folder on server
 
 ## Project Directory
-[Anti-Slop Indicator: 60% - Cam change later]
+[Anti-Slop: 60% - @wachi - Agile, modify later]
 ```text
 ├── docker-compose.yml          # All services on 1 GPU server: frontend, api, postgres, redis, object storage, pose-engine
 ├── .env.example                # Required env vars (no secrets)
@@ -213,7 +213,7 @@ recordings/{id}/
 - **Muscle model** (gait2392 + MRI muscle data) is a later phase, after joint angles are validated.
 
 ## User workflow
-[Anti-Slop Indicator: 70% - Heavy review by Wachi]
+[Anti-Slop: 70% - @wachi - About to change by my beautiful diagram]
 Toggle Pan mode to drag and view entire flow
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false}}}%%
@@ -265,7 +265,7 @@ flowchart LR
 ```
 
 ### Roles and pose tiers
-[Anti-Slop Indicator: 70% - Heavy review by Wachi]
+[Anti-Slop: 70% - @wachi - Reviewed by Wachi]
 **Roles**
 - **Patient / caregiver**: registers, records at home, sees coarse results (large-font UI)
 - **Nurse**: helps the patient use the patient screens at hospital, e.g. typing handgrip / BIA values
