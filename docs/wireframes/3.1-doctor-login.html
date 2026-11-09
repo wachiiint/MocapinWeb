@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOCAPCARE — เข้าสู่ระบบสำหรับแพทย์</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Anuphan', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body class="min-h-screen w-full bg-gradient-to-b from-[#DCEBFF]/70 via-[#EFF5FF] to-[#F8FAFC] text-slate-900 flex items-center justify-center p-5">
+
+  <div class="w-full max-w-md rounded-3xl bg-white border border-blue-100 p-7 sm:p-9 shadow-[0_16px_48px_rgba(11,101,255,0.08)] space-y-6">
+
+    <!-- Brand & Restricted Badge -->
+    <div class="space-y-3 text-center">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#0B65FF] text-white font-bold text-lg shadow-sm shadow-blue-500/20">
+        M
+      </div>
+      <div>
+        <span class="inline-block px-3 py-1 rounded-full bg-[#EFF5FF] text-[#0B65FF] text-xs font-bold mb-2">
+          เฉพาะแพทย์และบุคลากรทางการแพทย์
+        </span>
+        <h1 class="text-2xl font-bold text-slate-900">เข้าสู่ระบบแพทย์ผู้ดูแล</h1>
+      </div>
+    </div>
+
+    <!-- Doctor Login Inputs (No Sign-Up Button, Direct Flow Routing) -->
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1.5">รหัสแพทย์ / อีเมลโรงพยาบาล</label>
+        <input type="text" placeholder="เช่น dr.kittipong@hospital.go.th" class="w-full h-12 px-4 bg-[#F6F9FF] border border-blue-100 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-[#0B65FF]">
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1.5">รหัสผ่าน</label>
+        <input type="password" placeholder="กรอกรหัสผ่าน" class="w-full h-12 px-4 bg-[#F6F9FF] border border-blue-100 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-[#0B65FF]">
+      </div>
+    </div>
+
+    <a href="3.2-doctor-patient-list.html" class="w-full h-13 py-3.5 rounded-full bg-[#0B65FF] hover:bg-[#0052CC] text-base font-semibold text-white shadow-md shadow-blue-500/20 transition-colors flex items-center justify-center gap-2">
+      <span>เข้าสู่ระบบจัดการผู้ป่วย</span>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+    </a>
+
+    <p class="text-center text-xs text-slate-400">
+      บัญชีแพทย์ถูกจัดสรรโดยผู้ดูแลระบบของโรงพยาบาลเท่านั้น
+    </p>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOCAPCARE — เข้าสู่ระบบ / สมัครใช้งาน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Anuphan', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body class="min-h-screen w-full bg-white text-slate-900 flex flex-col lg:flex-row">
+
+  <!-- Left Brand & Reassurance Panel -->
+  <aside class="w-full lg:w-5/12 xl:w-4/12 bg-gradient-to-b from-[#DCEBFF]/80 via-[#EFF5FF] to-[#F4F8FC] border-b lg:border-b-0 lg:border-r border-slate-200/80 p-6 sm:p-10 flex flex-col justify-between">
+    <div class="space-y-8">
+      <div class="flex items-center justify-between">
+        <a href="1.0-landing-page.html" class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-[#0B65FF] flex items-center justify-center text-white font-bold text-base shadow-sm shadow-blue-500/20">
+            M
+          </div>
+          <span class="text-xl font-extrabold tracking-tight text-slate-900">MOCAP<span class="text-[#0B65FF]">CARE</span></span>
+        </a>
+
+        <a href="1.0-landing-page.html" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-[#0B65FF]">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+          <span>หน้าแรก</span>
+        </a>
+      </div>
+
+      <div class="hidden lg:block space-y-6 pt-6">
+        <h1 class="text-3xl font-bold text-slate-900 tracking-tight leading-snug">
+          คัดกรองและติดตามการเคลื่อนไหวได้จากที่บ้านและโรงพยาบาล
+        </h1>
+
+        <div class="space-y-4">
+          <div class="rounded-2xl bg-white/90 border border-blue-100 p-4 flex items-start gap-3.5 shadow-2xs">
+            <div class="w-10 h-10 rounded-full bg-[#EFF5FF] text-[#0B65FF] flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-slate-900">รองรับทั้ง 1 กล้อง และ 2 กล้อง</p>
+              <p class="text-xs text-slate-600 mt-0.5">หากต้องการใช้ 2 กล้อง เพียงเข้าสู่ระบบบัญชีเดียวกันบนมือถืออีกเครื่อง</p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-white/90 border border-blue-100 p-4 flex items-start gap-3.5 shadow-2xs">
+            <div class="w-10 h-10 rounded-full bg-[#EFF5FF] text-[#0B65FF] flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-slate-900">เชื่อมต่อกับแพทย์ผู้ดูแล</p>
+              <p class="text-xs text-slate-600 mt-0.5">ดูผลเบื้องต้นได้ทันที และรับคำแนะนำเมื่อแพทย์ตรวจยืนยันผลแล้ว</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hidden lg:block text-xs text-slate-500 pt-8">
+      MOCAPCARE — ระบบคัดกรองและติดตามการเคลื่อนไหว
+    </div>
+  </aside>
+
+  <!-- Right Main Auth Workspace (Pure Flow Routing, Zero Validation Blocking) -->
+  <main class="flex-1 flex items-center justify-center p-5 sm:p-10 lg:p-16 bg-white">
+    <div class="w-full max-w-xl space-y-7">
+
+      <!-- Mode Switcher Pill Tabs -->
+      <div class="grid grid-cols-2 p-1.5 rounded-full bg-[#F4F8FC] border border-slate-200/80">
+        <button id="tab-login" type="button" onclick="switchAuthTab('login')" class="h-12 rounded-full text-base font-bold transition-all bg-[#0B65FF] text-white shadow-sm">
+          เข้าสู่ระบบ
+        </button>
+        <button id="tab-signup" type="button" onclick="switchAuthTab('signup')" class="h-12 rounded-full text-base font-bold transition-all text-slate-600 hover:text-slate-900">
+          สมัครใช้งานใหม่
+        </button>
+      </div>
+
+      <!-- LOGIN PANEL -->
+      <div id="panel-login" class="rounded-2xl bg-[#F6F9FF] border border-blue-100/80 p-6 sm:p-8 space-y-6">
+        <h2 class="text-2xl font-bold text-slate-900">เข้าสู่ระบบผู้ใช้งาน</h2>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">เบอร์โทรศัพท์หรือชื่อบัญชี</label>
+            <input type="text" placeholder="เช่น 081-234-5678" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">รหัสผ่าน</label>
+            <input type="password" placeholder="กรอกรหัสผ่าน" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+        </div>
+
+        <a href="2.1-location-and-poses.html" class="w-full h-14 rounded-full bg-[#0B65FF] hover:bg-[#0052CC] text-base sm:text-lg font-semibold text-white shadow-md shadow-blue-500/20 transition-colors flex items-center justify-center gap-2">
+          <span>เข้าสู่ระบบ</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+        </a>
+
+        <p class="text-center text-sm text-slate-600">
+          ยังไม่มีบัญชีใช่หรือไม่?
+          <button type="button" onclick="switchAuthTab('signup')" class="font-bold text-[#0B65FF] hover:underline ml-1">สมัครใช้งานใหม่ที่นี่</button>
+        </p>
+      </div>
+
+      <!-- SIGN UP PANEL -->
+      <div id="panel-signup" class="hidden rounded-2xl bg-[#F6F9FF] border border-blue-100/80 p-6 sm:p-8 space-y-6">
+        <h2 class="text-2xl font-bold text-slate-900">สร้างบัญชีผู้ใช้งานใหม่</h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">ชื่อ - นามสกุล</label>
+            <input type="text" placeholder="ระบุชื่อและนามสกุล" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">เบอร์โทรศัพท์</label>
+            <input type="tel" placeholder="เช่น 081-234-5678" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">อายุ (ปี)</label>
+            <input type="number" placeholder="เช่น 68" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+
+          <div>
+            <span class="block text-sm font-semibold text-slate-700 mb-1.5">เพศ</span>
+            <div class="grid grid-cols-2 gap-2.5">
+              <label class="cursor-pointer">
+                <input type="radio" name="sex" value="male" class="peer sr-only" checked>
+                <span class="flex items-center justify-center h-12 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 peer-checked:bg-[#0B65FF] peer-checked:border-[#0B65FF] peer-checked:text-white transition-all">ชาย</span>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="sex" value="female" class="peer sr-only">
+                <span class="flex items-center justify-center h-12 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 peer-checked:bg-[#0B65FF] peer-checked:border-[#0B65FF] peer-checked:text-white transition-all">หญิง</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">ส่วนสูง (ซม.)</label>
+            <input type="number" placeholder="เช่น 160" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">น้ำหนัก (กก.)</label>
+            <input type="number" placeholder="เช่น 55" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">ตั้งรหัสผ่าน</label>
+            <input type="password" placeholder="กำหนดรหัสผ่าน" class="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B65FF]">
+          </div>
+        </div>
+
+        <a href="2.1-location-and-poses.html" class="w-full h-14 rounded-full bg-[#0B65FF] hover:bg-[#0052CC] text-base sm:text-lg font-semibold text-white shadow-md shadow-blue-500/20 transition-colors flex items-center justify-center gap-2">
+          <span>สมัครใช้งานและเริ่มตรวจ</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    function switchAuthTab(mode) {
+      const loginTab = document.getElementById('tab-login');
+      const signupTab = document.getElementById('tab-signup');
+      const loginPanel = document.getElementById('panel-login');
+      const signupPanel = document.getElementById('panel-signup');
+
+      if (mode === 'signup') {
+        signupPanel.classList.remove('hidden');
+        loginPanel.classList.add('hidden');
+        signupTab.className = 'h-12 rounded-full text-base font-bold transition-all bg-[#0B65FF] text-white shadow-sm';
+        loginTab.className = 'h-12 rounded-full text-base font-bold transition-all text-slate-600 hover:text-slate-900';
+      } else {
+        loginPanel.classList.remove('hidden');
+        signupPanel.classList.add('hidden');
+        loginTab.className = 'h-12 rounded-full text-base font-bold transition-all bg-[#0B65FF] text-white shadow-sm';
+        signupTab.className = 'h-12 rounded-full text-base font-bold transition-all text-slate-600 hover:text-slate-900';
+      }
+    }
+
+    if (window.location.hash === '#signup') {
+      switchAuthTab('signup');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOCAPCARE — คัดกรองและติดตามการเคลื่อนไหวจากที่บ้าน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Anuphan', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body class="min-h-screen w-full bg-white text-slate-900 flex flex-col">
+
+  <!-- Full-Width Sticky Top Navbar -->
+  <header class="sticky top-0 z-30 w-full bg-white/90 backdrop-blur border-b border-slate-200/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 h-20 flex items-center justify-between gap-4">
+      <a href="1.0-landing-page.html" class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-[#0B65FF] flex items-center justify-center text-white font-bold text-base shadow-sm shadow-blue-500/20">
+          M
+        </div>
+        <span class="text-xl font-extrabold tracking-tight text-slate-900">MOCAP<span class="text-[#0B65FF]">CARE</span></span>
+      </a>
+
+      <div class="flex items-center gap-3">
+        <a href="1.1-patient-auth.html#login" class="inline-flex items-center justify-center h-12 px-5 sm:px-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-sm sm:text-base font-semibold text-slate-700 transition-colors">
+          เข้าสู่ระบบ
+        </a>
+        <a href="1.1-patient-auth.html#signup" class="inline-flex items-center justify-center h-12 px-6 sm:px-7 rounded-full bg-[#0B65FF] hover:bg-[#0052CC] text-sm sm:text-base font-semibold text-white shadow-md shadow-blue-500/20 transition-colors">
+          สมัครใช้งาน
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Full-Screen Content -->
+  <main class="flex-1 flex flex-col">
+
+    <!-- Hero Section -->
+    <section class="w-full bg-gradient-to-b from-[#DCEBFF]/65 via-[#EFF5FF] to-white py-12 sm:py-20 px-4 sm:px-8">
+      <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+
+        <!-- Left Hero Copy -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-blue-200/80 text-sm font-semibold text-[#0B65FF] shadow-2xs">
+            <span class="w-2 h-2 rounded-full bg-[#0B65FF]"></span>
+            คัดกรองความเสี่ยงเบื้องต้นได้เองจากที่บ้าน
+          </div>
+
+          <h1 class="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-tight">
+            ประเมินและติดตามการเคลื่อนไหว<br class="hidden sm:inline" />
+            <span class="text-[#0B65FF]">ได้ด้วยตัวเองจากที่บ้าน</span>
+          </h1>
+
+          <p class="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-2xl">
+            ใช้กล้องมือถือบันทึกท่ายืนและลุกนั่งตามวิดีโอตัวอย่าง เพื่อช่วยประเมินความเสี่ยงเบื้องต้นด้วยตัวเองที่บ้าน และส่งผลให้แพทย์ผู้ดูแลช่วยติดตามอาการอย่างต่อเนื่อง
+          </p>
+
+          <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+            <a href="1.1-patient-auth.html#signup" class="inline-flex items-center justify-center gap-2.5 h-14 px-8 rounded-full bg-[#0B65FF] hover:bg-[#0052CC] text-base sm:text-lg font-semibold text-white shadow-lg shadow-blue-500/25 transition-colors">
+              <span>เริ่มคัดกรองเบื้องต้น</span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+            </a>
+            <a href="1.1-patient-auth.html#login" class="inline-flex items-center justify-center h-14 px-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 text-base sm:text-lg font-semibold text-slate-700 transition-colors">
+              มีบัญชีอยู่แล้ว เข้าสู่ระบบ
+            </a>
+          </div>
+        </div>
+
+        <!-- Right Visual Preview Card (Remote Home Pre-Screening & Risk Tracking) -->
+        <div class="lg:col-span-5">
+          <div class="rounded-3xl bg-white border border-blue-100 p-6 sm:p-7 shadow-[0_16px_48px_rgba(11,101,255,0.08)] space-y-5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-[#EFF5FF] text-[#0B65FF] flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                </div>
+                <div>
+                  <p class="text-base font-bold text-slate-900">คัดกรองเบื้องต้นได้เองที่บ้าน</p>
+                  <p class="text-sm text-slate-500">รู้แนวโน้มความเสี่ยงก่อนตัดสินใจไปโรงพยาบาล</p>
+                </div>
+              </div>
+              <span class="px-3 py-1 rounded-full bg-[#EFF5FF] text-[#0B65FF] text-xs font-bold">ใช้งานผ่านมือถือ</span>
+            </div>
+
+            <!-- Simulated Phone Camera & Pre-Screening Preview -->
+            <div class="rounded-2xl bg-[#0F172A] p-5 text-white relative overflow-hidden">
+              <div class="flex items-center justify-between text-xs text-slate-300 mb-4">
+                <span>ท่าลุก-นั่งจากเก้าอี้ 5 ครั้ง</span>
+                <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold">ตรวจจับ 26 จุดครบ</span>
+              </div>
+
+              <div class="h-44 flex items-center justify-center relative">
+                <svg class="w-32 h-36" viewBox="0 0 120 150" fill="none">
+                  <circle cx="60" cy="24" r="10" stroke="#38BDF8" stroke-width="3" fill="#0B65FF" fill-opacity="0.25"/>
+                  <line x1="60" y1="34" x2="60" y2="82" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="36" y1="50" x2="84" y2="50" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="60" y1="82" x2="44" y2="112" stroke="#34D399" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="60" y1="82" x2="76" y2="112" stroke="#34D399" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="44" y1="112" x2="44" y2="140" stroke="#34D399" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="76" y1="112" x2="76" y2="140" stroke="#34D399" stroke-width="3" stroke-linecap="round"/>
+                  <circle cx="60" cy="50" r="4" fill="#fff"/>
+                  <circle cx="60" cy="82" r="4" fill="#fff"/>
+                  <circle cx="44" cy="112" r="4" fill="#34D399"/>
+                  <circle cx="76" cy="112" r="4" fill="#34D399"/>
+                </svg>
+              </div>
+
+              <div class="mt-2 rounded-xl bg-white/10 backdrop-blur px-4 py-3 flex items-center justify-between text-sm">
+                <span class="text-slate-200 font-medium">ผลคัดกรองเบื้องต้น</span>
+                <span class="text-sm font-bold text-emerald-400">อยู่ในเกณฑ์ปกติ · ส่งให้แพทย์ตรวจ</span>
+              </div>
+            </div>
+
+            <!-- Two Location Modes Summary -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="rounded-2xl bg-[#F6F9FF] border border-blue-100/80 p-4">
+                <p class="text-sm font-bold text-slate-900">คัดกรองและฝึกที่บ้าน</p>
+                <p class="text-xs text-slate-600 mt-1">ทำท่าพื้นฐานที่ปลอดภัยด้วยมือถือ เพื่อติดตามความเสี่ยงด้วยตัวเอง</p>
+              </div>
+              <div class="rounded-2xl bg-[#F6F9FF] border border-blue-100/80 p-4">
+                <p class="text-sm font-bold text-slate-900">ตรวจละเอียดที่โรงพยาบาล</p>
+                <p class="text-xs text-slate-600 mt-1">ใช้ 2 กล้องพร้อมผู้เชี่ยวชาญดูแลสำหรับท่าทดสอบเชิงลึก</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3 Simple Steps Section -->
+    <section class="w-full py-12 sm:py-16 px-4 sm:px-8 bg-white">
+      <div class="max-w-7xl mx-auto space-y-8">
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">ขั้นตอนการใช้งาน 3 ขั้นตอน</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Step 1 -->
+          <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-4">
+            <div class="w-12 h-12 rounded-full bg-[#EFF5FF] text-[#0B65FF] flex items-center justify-center font-bold text-lg">
+              1
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">เลือกสถานที่และท่าทาง</h3>
+            <p class="text-base text-slate-600 leading-relaxed">
+              เลือกว่าอยู่ที่บ้านหรือโรงพยาบาล ระบบจะแสดงท่าทางที่เหมาะสมและท่าที่แพทย์มอบหมายให้ทำ
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-4">
+            <div class="w-12 h-12 rounded-full bg-[#EFF5FF] text-[#0B65FF] flex items-center justify-center font-bold text-lg">
+              2
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">ตั้งกล้องและทำตามวิดีโอตัวอย่าง</h3>
+            <p class="text-base text-slate-600 leading-relaxed">
+              จัดมุมกล้องให้เห็นร่างกายครบ 26 จุด ดูวิดีโอสาธิตท่าทางให้เข้าใจ แล้วเริ่มบันทึกหลังนับถอยหลัง 10 วินาที
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-4">
+            <div class="w-12 h-12 rounded-full bg-[#EFF5FF] text-[#0B65FF] flex items-center justify-center font-bold text-lg">
+              3
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">ทราบผลคัดกรองและรับคำแนะนำจากแพทย์</h3>
+            <p class="text-base text-slate-600 leading-relaxed">
+              ดูผลประเมินความเสี่ยงเบื้องต้นที่เข้าใจง่ายทันที และรับคำแนะนำเพิ่มเติมเมื่อแพทย์ตรวจสอบเสร็จสิ้น
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Simple Footer (No Doctor Links) -->
+  <footer class="w-full border-t border-slate-200/80 bg-[#F4F8FC] py-6 px-4 sm:px-8">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+      <span>MOCAPCARE — ระบบคัดกรองและติดตามการเคลื่อนไหว</span>
+      <div class="flex items-center gap-6">
+        <a href="1.1-patient-auth.html#login" class="hover:text-[#0B65FF] font-medium">เข้าสู่ระบบ</a>
+        <a href="1.1-patient-auth.html#signup" class="hover:text-[#0B65FF] font-medium">สมัครสมาชิก</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
