@@ -4,6 +4,7 @@ import type { RecordingSnapshot, RecordingStopReason, RecordingQualityReport } f
 import { recordVideo } from './video-recorder'
 import type { PoseFrame } from './halpe26'
 import type { Readiness } from './readiness'
+import { recordingCountdown } from './recording-countdown'
 
 type Result = { videoUrl: string; reportUrl: string; report: RecordingQualityReport; filename: string; extension: string }
 type Props = {
@@ -23,15 +24,23 @@ export function useVideoRecording({ getStream, frame, models, checkNow, config, 
   const [elapsedMs, setElapsedMs] = useState(0)
   const [error, setError] = useState('')
   const [result, setResult] = useState<Result | null>(null)
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null)
+  const countdown = useRef(recordingCountdown())
+  const latestStart = useRef<(() => void) | null>(null)
   useEffect(() => {
     snapshot.current = { frame, models, checkNow }; source.current = getStream; session.current?.sample()
   }, [frame, models, checkNow, getStream])
   useEffect(() => {
     mounted.current = true
-    const visibility = () => session.current?.sample()
+    const clock = countdown.current
+    const visibility = () => {
+      session.current?.sample()
+      countdown.current.reset(); setCountdownSeconds(null)
+    }
     document.addEventListener('visibilitychange', visibility)
     return () => {
       mounted.current = false; session.current?.dispose(); session.current = null
+      clock.reset()
       urls.current.forEach((url) => URL.revokeObjectURL(url)); urls.current = []
       document.removeEventListener('visibilitychange', visibility)
     }
@@ -44,19 +53,39 @@ export function useVideoRecording({ getStream, frame, models, checkNow, config, 
     if (!cameraActive && session.current) { setState('stopping'); session.current.stop('camera-ended') }
   }, [cameraActive])
 
+  useEffect(() => {
+    const clock = countdown.current
+    clock.reset()
+    const tick = () => {
+      if (!cameraActive || state !== 'idle' || result || error) { setCountdownSeconds(null); return }
+      const now = performance.now(), current = snapshot.current
+      const gate = current.checkNow(now)
+      const ready = document.visibilityState === 'visible' && current.models === 'ready' &&
+        gate.canStartRecording && !!source.current()?.getVideoTracks().some((track) => track.readyState === 'live')
+      const next = clock.tick(now, ready, `${gate.runKey}:${gate.passingSince}`, config.maxFrameAgeMs)
+      setCountdownSeconds(next.seconds)
+      if (next.start) latestStart.current?.()
+    }
+    const initial = window.setTimeout(tick, 0)
+    if (!cameraActive || state !== 'idle' || result || error) return () => clearTimeout(initial)
+    const timer = window.setInterval(tick, 100)
+    return () => { clearTimeout(initial); clearInterval(timer); clock.reset() }
+  }, [cameraActive, state, result, error, config.maxFrameAgeMs])
+
   function start() {
-    // The ref also prevents a second click before React commits the disabled button.
+    // The session ref prevents duplicate starts before React commits the new state.
     if (session.current || result) return
     setError('')
     try {
-      if (typeof MediaRecorder === 'undefined') throw new Error('Video recording is unavailable in this browser.')
+      if (!checkNow(performance.now()).canStartRecording || document.visibilityState !== 'visible') return
+      if (typeof MediaRecorder === 'undefined') throw new Error('เบราว์เซอร์นี้ไม่รองรับการอัดวิดีโอ')
       const stream = getStream()
-      if (!stream || !stream.getVideoTracks().some((track) => track.readyState === 'live')) throw new Error('Start the camera before recording.')
+      if (!stream || !stream.getVideoTracks().some((track) => track.readyState === 'live')) throw new Error('กรุณาเปิดกล้องอีกครั้ง')
       const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
         .find((type) => MediaRecorder.isTypeSupported(type))
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       const settings = stream.getVideoTracks()[0].getSettings()
-      // Use the current render at the click boundary; subsequent watchdog samples use the latest committed inputs.
+      // Start with the current inputs; watchdog samples use the latest committed inputs.
       snapshot.current = { frame, models, checkNow }; source.current = getStream
       session.current = recordVideo(recorder, {
         config: { ...config }, source: { width: settings.width ?? 0, height: settings.height ?? 0 },
@@ -67,7 +96,7 @@ export function useVideoRecording({ getStream, frame, models, checkNow, config, 
         },
         sourceAlive: () => source.current()?.getVideoTracks().some((track) => track.readyState === 'live') ?? false,
         onTick: (time) => { if (mounted.current) setElapsedMs(time) },
-        onError: (message) => { if (mounted.current) setError(message) },
+        onError: () => { if (mounted.current) setError('การอัดมีปัญหา วิดีโอที่เก็บได้อาจไม่สมบูรณ์') },
         onComplete: (video, report) => {
           session.current = null
           if (!mounted.current) return
@@ -80,15 +109,18 @@ export function useVideoRecording({ getStream, frame, models, checkNow, config, 
         },
       })
       setElapsedMs(0); setState('recording')
-    } catch (cause) {
+    } catch {
       session.current = null; setState('idle')
-      setError(cause instanceof Error ? cause.message : 'Recording could not start.')
+      setError('เริ่มอัดไม่ได้ กรุณาตรวจกล้องแล้วกดลองใหม่')
     }
   }
+  useEffect(() => { latestStart.current = start })
+
   function clear() {
     if (session.current) return
     urls.current.forEach((url) => URL.revokeObjectURL(url)); urls.current = []
     setResult(null); setError(''); setElapsedMs(0)
   }
-  return { state, elapsedMs, error, result, start, stop, clear }
+  function retry() { countdown.current.reset(); setError('') }
+  return { state, elapsedMs, error, result, countdownSeconds, retry, stop, clear }
 }
