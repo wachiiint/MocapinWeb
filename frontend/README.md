@@ -13,6 +13,8 @@ npm run prepare:models
 npm run dev
 ```
 
+On Linux, replace `npm run prepare:models` with `./prepare-models.sh` (needs `curl`, `unzip`, `sha256sum`).
+
 Open the local URL printed by Vite in Chrome. Wait for the default models to load, click **Start Camera**, and allow camera access. **Stop Camera** releases the stream. Select another camera while stopped. **Mirror preview** flips the image and skeleton together without changing source coordinates.
 
 **Test Still Image** runs the same detector and pose pipeline on a local JPEG or PNG without opening a webcam. Use **Clear Image** to reset it. This selects an image, never a model file.
