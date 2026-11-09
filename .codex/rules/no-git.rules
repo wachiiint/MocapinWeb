@@ -1,0 +1,4 @@
+prefix_rule(pattern = ["git", "commit"], decision = "forbidden",
+            justification = "Humans commit in this repo (AGENTS.md section 1)")
+prefix_rule(pattern = ["git", "push"], decision = "forbidden",
+            justification = "Humans push in this repo (AGENTS.md section 1)")

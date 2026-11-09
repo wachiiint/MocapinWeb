@@ -11,6 +11,7 @@ This file defines the working rules for AI coding agents in this repository. Fol
 3. **Human-Reviewed Architecture**: Do not invent new folders, frameworks, background workers, or state management libraries on your own initiative. Propose options and let the team decide.
 4. **Setup Steps Are Guidance, Not Actions**: Never download large AI models, clone external repositories, or install heavy system packages without asking. Write the exact CLI commands in the documentation instead.
 5. **Git Hygiene**: Agents are PROHIBITED for commit or push git. Only advice team for git action. Highlight key changes per commit. Always warn team to write commit message by his/her own word.
+6. **Anti-Slop Tag**: Humans mark what they own with `[Anti-Slop: <level>% - @owner - note]` (inside a comment in code). Never write, change, or remove the level yourself. When new or edited code/docs have no tag, or you edit tagged content, remind the owner to add or update it.
 
 ---
 
