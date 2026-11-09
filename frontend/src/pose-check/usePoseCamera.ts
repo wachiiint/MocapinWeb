@@ -28,11 +28,12 @@ export function usePoseCamera() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [working, setWorking] = useState(false)
   const [previewFps, setPreviewFps] = useState(0)
-  const [stalled, setStalled] = useState(false)
   const [inferenceFps, setInferenceFps] = useState(0)
   const [latency, setLatency] = useState(0)
   const [imageUrl, setImageUrl] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [cameraFrameAt, setCameraFrameAt] = useState<number | null>(null)
+  const cameraProgress = useRef({ frames: -1, at: null as number | null })
 
   const stop = useCallback(() => {
     generation.current++
@@ -45,9 +46,10 @@ export function usePoseCamera() {
     objectUrl.current = ''
     imageSource.current = null
     latest.current = null
+    cameraProgress.current = { frames: -1, at: null }; setCameraFrameAt(null)
     timingWindow.current = newTimingWindow()
     setTiming(null); setStatistics({}); setSampleCount(0)
-    setImageUrl(''); setFrame(null); setMode('off'); setPreviewFps(0); setStalled(false); setInferenceFps(0); setLatency(0)
+    setImageUrl(''); setFrame(null); setMode('off'); setPreviewFps(0); setInferenceFps(0); setLatency(0)
   }, [])
 
   const refreshDevices = useCallback(async () => {
@@ -131,10 +133,17 @@ export function usePoseCamera() {
     launch(runtimeMode)
     navigator.mediaDevices?.addEventListener('devicechange', refreshDevices)
     const watchdog = window.setInterval(() => {
+      const video = videoRef.current
+      if (modeRef.current === 'camera' && video) {
+        const frames = video.getVideoPlaybackQuality().totalVideoFrames
+        if (frames !== cameraProgress.current.frames && frames > 0) {
+          cameraProgress.current = { frames, at: performance.now() }; setCameraFrameAt(cameraProgress.current.at)
+        }
+      }
       if (modeRef.current === 'camera' && latest.current && performance.now() - latest.current.capturedAt > POSE_CONFIG.staleMs) {
         latest.current = null; setFrame(null); setInferenceFps(0)
       }
-    }, 200)
+    }, 100)
     return () => {
       clearInterval(watchdog); navigator.mediaDevices?.removeEventListener('devicechange', refreshDevices)
       stop(); worker.terminate(); workerRef.current = null; workerReady.current = false
@@ -172,7 +181,6 @@ export function usePoseCamera() {
         const now = performance.now()
         if (now - capture.since >= 1000) {
           const total = video.getVideoPlaybackQuality().totalVideoFrames
-          setStalled(total === capture.previousFrames)
           setPreviewFps((total - capture.previousFrames) * 1000 / (now - capture.since))
           capture.previousFrames = total; capture.since = now
         }
@@ -230,7 +238,8 @@ export function usePoseCamera() {
     if (mode === 'camera' || mode === 'starting' || working || value === runtimeMode) return
     resetRuntime(); setRuntimeMode(value)
   }
-  return { videoRef, mode, models, error, frame, devices, working, previewFps, inferenceFps, stalled,
+  const getStream = useCallback(() => streamRef.current, [])
+  return { videoRef, getStream, mode, models, error, frame, devices, working, previewFps, inferenceFps, cameraFrameAt,
     runtimeMode, runtimeInfo, recoveryReason, timing, statistics, sampleCount, changeRuntimeMode,
     latency, imageUrl, start, stop, inspectImage, retryModels: () => {
       resetRuntime(); setAttempt((value) => value + 1)

@@ -3,6 +3,7 @@ import type { ModelRuntime, Provider } from './halpe26.ts'
 
 type Session = Pick<InferenceSession, 'inputNames' | 'run' | 'release'>
 export type SessionFactory = (provider: Provider) => Promise<Session>
+export type OutputComparison = (gpu: InferenceSession.ReturnType, wasm: InferenceSession.ReturnType) => 'match' | 'mismatch' | 'inconclusive'
 export type GpuAccess = { requestAdapter(): Promise<unknown | null> }
 
 export async function checkWebGpu(gpu?: GpuAccess) {
@@ -35,7 +36,7 @@ export async function openModelSession(
   name: string, create: SessionFactory, preferred: Provider, initialReason?: string,
 ) {
   const info: ModelRuntime = { provider: preferred, revision: 0, fallbackReason: initialReason }
-  let session: Session
+  let session: Session | undefined, reference: Session | undefined, closed = false
   try {
     session = await create(preferred)
   } catch (error) {
@@ -45,25 +46,62 @@ export async function openModelSession(
     try { session = await create('wasm') }
     catch (cause) { throw new Error(`${name} WASM fallback initialization failed: ${errorText(cause)}`) }
   }
+  if (info.provider === 'webgpu') info.verification = 'pending'
+  async function releaseActive() {
+    const current = session; session = undefined
+    await current?.release()
+  }
+  async function fallback(reason: string) {
+    info.provider = 'wasm'; info.revision++; info.fallbackReason = reason
+    delete info.verification
+    await releaseActive().catch(() => undefined)
+    session = reference ?? await create('wasm'); reference = undefined
+  }
 
   return {
     get info(): ModelRuntime { return { ...info } },
-    async run(input: Tensor) {
+    async run(input: Tensor, compare?: OutputComparison) {
+      if (closed || !session) throw new Error(`${name} session is unavailable.`)
+      let output: InferenceSession.ReturnType
       try {
-        return await session.run({ [session.inputNames[0]]: input })
+        output = await session.run({ [session.inputNames[0]]: input })
       } catch (error) {
         if (info.provider === 'wasm') throw new Error(`${name} WASM inference failed: ${errorText(error)}`)
-        info.provider = 'wasm'; info.revision++
-        info.fallbackReason = `WebGPU inference failed: ${errorText(error)}`
-        await session.release().catch(() => undefined)
         try {
-          session = await create('wasm')
-          return await session.run({ [session.inputNames[0]]: input })
+          await fallback(`WebGPU inference failed: ${errorText(error)}`)
+          return await session!.run({ [session!.inputNames[0]]: input })
         } catch (cause) {
           throw new Error(`${name} WASM fallback failed: ${errorText(cause)}`)
         }
       }
+      if (info.provider !== 'webgpu' || info.verification === 'passed' || !compare) return output
+      let expected: InferenceSession.ReturnType
+      try {
+        reference ??= await create('wasm')
+        expected = await reference.run({ [reference.inputNames[0]]: input })
+      } catch (cause) {
+        throw new Error(`${name} WASM verification failed: ${errorText(cause)}`)
+      }
+      const verdict = compare(output, expected)
+      if (verdict === 'mismatch') {
+        await fallback('WebGPU output verification differed from WASM on the same frame; using WASM.')
+        return expected
+      }
+      if (verdict === 'match') {
+        info.verification = 'passed'
+        const checked = reference; reference = undefined
+        await checked.release()
+        return output
+      }
+      // Both detectors seeing an empty scene is not evidence that WebGPU can detect people.
+      // Keep the reference session until a positive frame verifies it; do not guess or blacklist devices.
+      return expected
     },
-    async release() { await session.release() },
+    async release() {
+      if (closed) return
+      closed = true
+      const pending = reference; reference = undefined
+      await Promise.all([releaseActive(), pending?.release()])
+    },
   }
 }
