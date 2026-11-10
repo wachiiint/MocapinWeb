@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, CameraOff } from 'lucide-react'
+import { Camera, CameraOff, Check, Download, LoaderCircle, SwitchCamera, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePoseCamera } from '@/pose-check/usePoseCamera'
 import { drawOverlay } from '@/pose-check/draw-overlay'
-import { KEYPOINT_NAMES } from '@/pose-check/halpe26'
+import { DEFAULT_MODELS, KEYPOINT_NAMES } from '@/pose-check/halpe26'
+import { hasCachedModels } from '@/pose-check/model-cache'
 import { RuntimeDebug } from '@/pose-check/RuntimeDebug'
 import { QUALITY_CONFIG } from '@/pose-check/quality-config'
 import { QualityDebug } from '@/pose-check/QualityDebug'
@@ -15,7 +16,9 @@ import { RecordingControls } from '@/pose-check/RecordingControls'
 import { QualityChecklist } from '@/pose-check/QualityChecklist'
 
 function App() {
-  const { videoRef, ...camera } = usePoseCamera()
+  const [modelsRequested, setModelsRequested] = useState(false)
+  const [checkingCache, setCheckingCache] = useState(true)
+  const { videoRef, ...camera } = usePoseCamera(modelsRequested)
   const overlay = useRef<HTMLCanvasElement>(null)
   const [device, setDevice] = useState('')
   const [config, setConfig] = useState({ ...QUALITY_CONFIG })
@@ -33,21 +36,51 @@ function App() {
     mode === 'image' ? 'ภาพตัวอย่างไม่เริ่มอัดวิดีโอ กรุณาเปิดกล้อง' : 'อยู่ในตำแหน่งนี้ ให้เห็นทั้งตัวและเท้าทั้งสองข้าง'
   const threshold = config.keypointScore
   const overlayFrame = gate.showOverlay ? frame : null
+  const mirrored = mode === 'camera' && camera.cameraFacing === 'user'
+  const preparing = checkingCache || (modelsRequested && (models === 'loading' || models === 'recovering'))
+  const StatusIcon = preparing ? LoaderCircle : !modelsRequested ? Download : models === 'ready' ? Check : TriangleAlert
+  const modelStatus = checkingCache ? 'กำลังตรวจไฟล์…' : !modelsRequested ? 'รอดาวน์โหลด' : models === 'recovering' ? 'กำลังกู้คืนระบบ…' :
+    models === 'loading' ? 'กำลังเตรียมระบบ…' : models === 'ready' ? 'พร้อมใช้งาน' : 'เตรียมระบบไม่สำเร็จ'
 
   useEffect(() => {
     if (overlay.current) drawOverlay(overlay.current, overlayFrame, threshold)
   }, [overlayFrame, threshold])
 
+  useEffect(() => {
+    let cancelled = false
+    const urls = Object.values(DEFAULT_MODELS).map((file) => new URL(`${import.meta.env.BASE_URL}${file}`, location.origin).href)
+    void hasCachedModels(urls).then((cached) => {
+      if (cancelled) return
+      if (cached) setModelsRequested(true)
+      setCheckingCache(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+
   return (
     <main className="min-h-screen w-full bg-white text-slate-900">
       <header className="border-b border-slate-200/80 bg-[#F4F8FC] px-5 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-5xl items-center gap-2.5">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0B65FF] text-sm font-bold text-white">M</span>
           <span className="text-lg font-bold tracking-tight"><span className="text-[#0B65FF]">MOCAP</span>CARE</span>
         </div>
       </header>
       <div className="mx-auto max-w-5xl space-y-6 p-5 sm:p-8 lg:py-10">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">ตั้งกล้องและบันทึกวิดีโอ</h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="min-w-0 flex-1 text-2xl font-bold tracking-tight sm:text-3xl">ตั้งกล้องและบันทึกวิดีโอ</h1>
+          <div className="ml-auto flex max-w-[55%] shrink-0 flex-col items-end gap-1">
+            {!checkingCache && !modelsRequested ?
+              <Button className="min-h-12 rounded-full bg-[#0B65FF] px-5 text-base text-white hover:bg-[#0052CC]" onClick={() => setModelsRequested(true)}>
+                <Download size={20} aria-hidden="true" />ดาวน์โหลด
+              </Button>
+             :
+            <p role="status" aria-live="polite" aria-atomic="true" className={`inline-flex items-center gap-2 text-base font-medium ${modelsRequested && models === 'error' ? 'text-red-700' : 'text-slate-700'}`}>
+              <StatusIcon size={20} aria-hidden="true" className={`shrink-0 ${preparing ? 'motion-safe:animate-spin' : ''}`} />
+              {modelStatus}
+            </p>}
+            {modelsRequested && models === 'error' && <Button variant="outline" className="min-h-12 rounded-full text-base" onClick={camera.retryModels}>ลองใหม่</Button>}
+          </div>
+        </div>
         <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EFF5FF] text-[#0B65FF]"><Camera size={20} aria-hidden="true" /></span>
@@ -55,11 +88,11 @@ function App() {
           </div>
           <QualityChecklist gate={gate} />
           <div className="relative overflow-hidden rounded-2xl bg-slate-950">
-            <div className="relative min-h-60" style={{ transform: 'scaleX(-1)' }}>
+            <div className="relative min-h-60" style={{ transform: mirrored ? 'scaleX(-1)' : undefined }}>
               <video ref={videoRef} autoPlay muted playsInline className={`w-full ${mode === 'camera' ? 'block' : 'hidden'}`} />
               {camera.imageUrl && <img src={camera.imageUrl} alt="ภาพตัวอย่างสำหรับตรวจความพร้อม" className="block w-full" />}
               {!active && mode !== 'image' && (
-                <div className="flex aspect-video flex-col items-center justify-center gap-3 px-5 text-center text-slate-300" style={{ transform: 'scaleX(-1)' }}>
+                <div className="flex aspect-video flex-col items-center justify-center gap-3 px-5 text-center text-slate-300">
                   <CameraOff size={36} strokeWidth={1.5} aria-hidden="true" /><p className="text-lg">เปิดกล้องเพื่อเริ่มตรวจความพร้อม</p>
                 </div>
               )}
@@ -86,9 +119,14 @@ function App() {
               <Camera size={18} />{mode === 'starting' ? 'กำลังเปิดกล้อง…' : 'เปิดกล้อง'}
             </Button>
             <Button className="min-h-12 rounded-full px-5 text-lg" variant="outline" disabled={mode === 'off'} onClick={() => { recording.stop('camera-stopped'); camera.stop() }}>{mode === 'image' ? 'ล้างภาพ' : 'ปิดกล้อง'}</Button>
+            <Button className="min-h-12 rounded-full px-5 text-lg" variant="outline"
+              disabled={mode !== 'camera' || models !== 'ready' || recordingBusy || camera.devices.length < 2}
+              onClick={() => { if (recordingBusy) return; setDevice(''); void camera.switchCamera() }}>
+              <SwitchCamera size={18} aria-hidden="true" />สลับกล้อง
+            </Button>
           </div>
           {(error || models === 'error') && <div role="alert" className="flex flex-wrap items-center gap-3 text-lg text-red-700">
-            <p>กล้องหรือระบบตรวจมีปัญหา</p>
+            <p className="break-words">{error || 'กล้องหรือระบบตรวจมีปัญหา'}</p>
             {models === 'error' && <Button className="min-h-12 rounded-full text-lg" variant="outline" onClick={camera.retryModels}>ลองตรวจใหม่</Button>}
           </div>}
         </section>
@@ -116,7 +154,7 @@ function App() {
             </dl>
             {gate.issues.map((issue) => <p key={issue.reason} className="my-2 text-sm">{REASONS[issue.reason].title}: {REASONS[issue.reason].advice}</p>)}
             <RuntimeDebug mode={camera.runtimeMode} info={camera.runtimeInfo}
-              disabled={active || camera.working || recordingBusy || models === 'loading' || models === 'recovering'}
+              disabled={!modelsRequested || active || camera.working || recordingBusy || models === 'loading' || models === 'recovering'}
               onModeChange={camera.changeRuntimeMode} latest={camera.timing} statistics={camera.statistics}
               sampleCount={camera.sampleCount} recoveryReason={camera.recoveryReason} />
             <fieldset disabled={recordingBusy} className="min-w-0">

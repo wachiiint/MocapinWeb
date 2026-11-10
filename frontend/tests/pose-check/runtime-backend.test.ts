@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Tensor, type InferenceSession } from 'onnxruntime-web/wasm'
-import { checkWebGpu, openModelSession, watchGpuLoss, type SessionFactory } from './runtime-backend.ts'
-import type { Provider } from './halpe26.ts'
-import { compareDetectorOutput } from './runtime-output.ts'
+import { checkWebGpu, openModelSession, watchGpuLoss, type SessionFactory } from '../../src/pose-check/runtime-backend.ts'
+import type { Provider } from '../../src/pose-check/halpe26.ts'
+import { compareDetectorOutput } from '../../src/pose-check/runtime-output.ts'
 
 const input = new Tensor('float32', new Float32Array([0]), [1])
 

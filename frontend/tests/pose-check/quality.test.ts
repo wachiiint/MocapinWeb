@@ -1,10 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { measurePixelQuality } from './quality-pixels.ts'
-import { evaluateQuality, sortIssues } from './quality-checks.ts'
-import { QUALITY_CONFIG } from './quality-config.ts'
-import type { Pixels, PoseFrame } from './halpe26.ts'
-import { goodFrame } from './quality.fixture.ts'
+import { measurePixelQuality } from '../../src/pose-check/quality-pixels.ts'
+import { evaluateQuality, sortIssues } from '../../src/pose-check/quality-checks.ts'
+import { QUALITY_CONFIG } from '../../src/pose-check/quality-config.ts'
+import type { Pixels, PoseFrame } from '../../src/pose-check/halpe26.ts'
+import { REQUIRED_KEYPOINT_INDICES } from '../../src/pose-check/halpe26.ts'
+import { goodFrame } from '../../src/pose-check/quality.fixture.ts'
 
 function pixels(width: number, height: number, gray: (x: number, y: number) => number): Pixels {
   const data = new Uint8ClampedArray(width * height * 4)
@@ -20,7 +21,7 @@ test('normal frame passes all checks; boundaries are inclusive and missing peopl
   assert.deepEqual(issueCodes(goodFrame()), [])
   const frame = goodFrame()
   const config = { ...QUALITY_CONFIG, minPersonHeight: 400 / 480, minPersonWidth: 0.5,
-    edgeMargin: 40 / 480, minPersonLuma: 100, minSharpness: 100, maxClippedFraction: 0 }
+    minPersonLuma: 100, minSharpness: 100, maxClippedFraction: 0 }
   assert.ok(evaluateQuality(frame, config).checks.every((c) => c.state === 'pass'))
   frame.people = []; frame.keypoints = []
   const result = evaluateQuality(frame, QUALITY_CONFIG)
@@ -29,18 +30,19 @@ test('normal frame passes all checks; boundaries are inclusive and missing peopl
   assert.ok(evaluateQuality(null, QUALITY_CONFIG).checks.every((c) => c.state === 'unknown'))
 })
 
-test('framing checks all feet, box margins, size and confidence without clipping source coordinates', () => {
+test('required feet must stay in frame and clear, while edge margins no longer block', () => {
   const frame = goodFrame()
   frame.keypoints[25].y = 480
-  assert.ok(issueCodes(frame).includes('FRAMING'))
   assert.ok(issueCodes(frame).includes('KEYPOINTS'))
   frame.keypoints[25] = { x: 300, y: 300, score: 0.1 }
-  assert.ok(issueCodes(frame).includes('FRAMING_UNKNOWN'))
+  assert.ok(issueCodes(frame).includes('KEYPOINTS'))
   assert.ok(evaluateQuality(frame, QUALITY_CONFIG).unclear.includes('Right Heel'))
   frame.keypoints = goodFrame().keypoints
+  frame.keypoints[25].x = 0
+  frame.people[0] = { x1: 0, y1: 0, x2: 640, y2: 480, score: 1 }
+  assert.deepEqual(issueCodes(frame), [])
   frame.people[0] = { x1: 0, y1: 0, x2: 50, y2: 100, score: 1 }
   assert.ok(issueCodes(frame).includes('PERSON_SMALL'))
-  assert.ok(issueCodes(frame).includes('FRAMING'))
   frame.people.push({ ...frame.people[0] })
   assert.equal(issueCodes(frame)[0], 'MULTIPLE_PEOPLE')
   assert.ok(evaluateQuality(frame, QUALITY_CONFIG).checks.slice(1).every((c) => c.state === 'unknown'))
@@ -50,12 +52,29 @@ test('simultaneous lighting, blur and keypoint issues follow the required priori
   const frame = goodFrame()
   frame.quality.personLuma = 20; frame.quality.backgroundLuma = 200; frame.quality.sharpness = 0
   frame.quality.personHistogram = new Array<number>(256).fill(0); frame.quality.personHistogram[255] = 100
-  frame.keypoints[0].score = 0.1
+  frame.keypoints[5].score = 0.1
   const codes = issueCodes(frame)
   assert.ok(codes.includes('DARK')); assert.ok(codes.includes('CLIPPED')); assert.ok(codes.includes('BACKLIGHT'))
   assert.ok(codes.indexOf('DARK') < codes.indexOf('BLUR'))
-  assert.ok(codes.indexOf('BLUR') < codes.indexOf('KEYPOINTS'))
+  assert.ok(codes.indexOf('KEYPOINTS') < codes.indexOf('BLUR'))
   assert.deepEqual(issueCodes(goodFrame()), [])
+})
+
+test('only the approved 21 named points are required; raw 26-point outputs remain intact', () => {
+  const frame = goodFrame()
+  for (let i = 0; i < 5; i++) frame.keypoints[i] = { x: -1, y: -1, score: 0 }
+  const quality = evaluateQuality(frame, QUALITY_CONFIG)
+  assert.equal(REQUIRED_KEYPOINT_INDICES.length, 21)
+  assert.equal(quality.clearCount, 21)
+  assert.equal(quality.requiredClearCount, 21)
+  assert.deepEqual(sortIssues(quality.checks), [])
+  assert.equal(frame.keypoints.length, 26)
+  for (const index of REQUIRED_KEYPOINT_INDICES) {
+    const missing = goodFrame(); missing.keypoints[index].score = 0.29
+    assert.ok(evaluateQuality(missing, QUALITY_CONFIG).checks.some((c) => c.reason === 'KEYPOINTS' && c.blocking && c.state === 'fail'))
+    missing.keypoints[index].score = 0.3
+    assert.equal(evaluateQuality(missing, QUALITY_CONFIG).requiredClearCount, 21)
+  }
 })
 
 test('pixel analysis distinguishes dark subjects, clipped pixels, backlit backgrounds and missing regions', () => {

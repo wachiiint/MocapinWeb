@@ -4,6 +4,6 @@
     "types": ["node"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo"
   },
-  "include": ["src/pose-check/*.test.ts"],
+  "include": ["tests/pose-check/*.test.ts"],
   "exclude": []
 }

@@ -2,6 +2,10 @@
 
 Status on 2026-11-09: offline benchmark tooling and procedural regression cases are implemented. Threshold calibration on independently labelled real images, model-team validation, and physical-device acceptance are **not complete**. Phase A also remains open. The desktop Chrome code is experimental; neither Android Chrome nor iPhone Safari is certified.
 
+Policy update on 2026-11-10 (`video-quality-experimental-v2`): starting a recording requires the 21 HALPE26 points excluding the nose, eyes and ears. Raw output remains 26 points. The edge-margin check and its Debug setting have been removed; required points must still be inside the image. Blur, clipping and backlight checks (including unavailable measurements) are warnings only. Person count, person size, minimum brightness and required points remain mandatory, along with camera/pose freshness and the existing readiness hold/countdown.
+
+Recording reports now use `schemaVersion: 2`. Each check and issue interval includes `blocking`: `false` denotes an advisory warning; `true` denotes a required condition. Intervals with the same timestamps but different effects remain separate. A report warning does not itself prevent recording.
+
 ## What is implemented
 
 The [benchmark CLI](../frontend/quality-benchmark.ts) runs the production [single-frame quality checks](../frontend/src/pose-check/quality-checks.ts) on versioned, labelled samples. It reports both bad samples incorrectly allowed through and good samples incorrectly warned about. It does not classify an entire recording, evaluate readiness over time, run ONNX inference, or certify clinical suitability. Existing readiness and recorder tests cover temporal behaviour separately.
@@ -37,9 +41,11 @@ The [2026-11-09 synthetic report](quality-benchmark-2026-11-09.json) contains th
 
 These counts verify the intended engineering checks on known constructions. They do not demonstrate a real-world false-acceptance or false-warning rate. No default threshold was changed on the strength of these results. The sample imbalance, shared generators and supplied pose geometry make these fixtures unsuitable for device or downstream-model acceptance.
 
+The table above describes the historical v1 policy. Under v2, each synthetic split admits the original good case and four originally bad-labelled cases (clipping, backlight, blur and proximity to an edge), while six bad-labelled cases remain blocked. The original labels are preserved to expose this policy tradeoff rather than relabel admitted images as good. Warning-only cases still include their measured checks and reason codes. These are synthetic gate checks, not evidence that the admitted recordings are suitable for downstream analysis.
+
 ## Real-data labelling contract
 
-A dataset has `schemaVersion: 1`, `metricVersion: "video-quality-experimental-v1"`, and a non-empty `samples` array. Each sample requires:
+A dataset has `schemaVersion: 1`, `metricVersion: "video-quality-experimental-v2"`, and a non-empty `samples` array. Each sample requires:
 
 | Field | Meaning |
 |---|---|
@@ -70,7 +76,7 @@ $sample = [ordered]@{
 }
 $dataset = [ordered]@{
   schemaVersion = 1
-  metricVersion = 'video-quality-experimental-v1'
+  metricVersion = 'video-quality-experimental-v2'
   samples = @($sample)
 }
 $dataset | ConvertTo-Json -Depth 30 |
@@ -83,7 +89,7 @@ The D recorder can only start in Ready. To collect a controlled poor-quality sce
 
 ### How to interpret the report
 
-Every sample records its identity/provenance, expected label, predicted `pass / fail / unknown`, measured checks and reason codes. All eight static checks must pass for a sample to pass. A failed check blocks it; absent data also blocks it and is counted as unknown if no explicit failure is present.
+Every sample records its identity/provenance, expected label, predicted `pass / fail / unknown`, measured checks and reason codes. All four mandatory static checks must pass for a sample to pass. A failed mandatory check blocks it; unavailable mandatory data is counted as unknown if no explicit mandatory failure is present. The other three checks are advisory and do not alter the predicted eligibility. Every check exposes `blocking`, and reason codes retain advisory warnings even when the sample is allowed through.
 
 Results are separated by split and label source so synthetic evidence cannot inflate human-labelled results:
 

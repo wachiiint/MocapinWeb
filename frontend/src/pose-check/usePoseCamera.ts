@@ -2,22 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_MODELS, POSE_CONFIG, type PoseFrame, type WorkerReply, type WorkerRequest,
   type RuntimeInfo, type RuntimeMode, type TimingSample } from './halpe26'
 import { newTimingWindow, recordTiming, summarizeTimings } from './runtime-stats'
+import { observeCameraFrames } from './camera-frames'
+import { defaultRuntimeMode, estimateDevice } from './device-info'
+import { newFramePacing, recordFrameCompletion, takeCameraFrame } from './frame-pacing'
+import { requestCameraSource, type CameraFacing } from './camera-selection'
 
 type Mode = 'off' | 'starting' | 'camera' | 'image'
 
-export function usePoseCamera() {
+export function usePoseCamera(modelsRequested: boolean) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const workerRef = useRef<Worker | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const animation = useRef(0), generation = useRef(0), busy = useRef(false)
+  const cancelCapture = useRef<(() => void) | null>(null), generation = useRef(0), busy = useRef(false)
   const modeRef = useRef<Mode>('off'), objectUrl = useRef('')
   const imageSource = useRef<File | null>(null)
   const latest = useRef<PoseFrame | null>(null)
   const workerReady = useRef(false)
   const timingWindow = useRef(newTimingWindow())
+  const pacing = useRef(newFramePacing(estimateDevice().kind))
+  const cameraFrameTime = useRef<number | null>(null)
+  const preferredFacing = useRef<CameraFacing>('user')
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing | null>(null)
   const [mode, setMode] = useState<Mode>('off')
   const [models, setModels] = useState<'loading' | 'recovering' | 'ready' | 'error'>('loading')
-  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('auto')
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>(() => defaultRuntimeMode())
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo | null>(null)
   const [recoveryReason, setRecoveryReason] = useState('')
   const [timing, setTiming] = useState<TimingSample | null>(null)
@@ -33,11 +41,10 @@ export function usePoseCamera() {
   const [imageUrl, setImageUrl] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [cameraFrameAt, setCameraFrameAt] = useState<number | null>(null)
-  const cameraProgress = useRef({ frames: -1, at: null as number | null })
 
   const stop = useCallback(() => {
     generation.current++
-    cancelAnimationFrame(animation.current)
+    cancelCapture.current?.(); cancelCapture.current = null
     modeRef.current = 'off'
     streamRef.current?.getTracks().forEach((track) => { track.onended = null; track.stop() })
     streamRef.current = null
@@ -46,7 +53,8 @@ export function usePoseCamera() {
     objectUrl.current = ''
     imageSource.current = null
     latest.current = null
-    cameraProgress.current = { frames: -1, at: null }; setCameraFrameAt(null)
+    cameraFrameTime.current = null; setCameraFrameAt(null)
+    pacing.current = newFramePacing(estimateDevice().kind)
     timingWindow.current = newTimingWindow()
     setTiming(null); setStatistics({}); setSampleCount(0)
     setImageUrl(''); setFrame(null); setMode('off'); setPreviewFps(0); setInferenceFps(0); setLatency(0)
@@ -61,6 +69,7 @@ export function usePoseCamera() {
   }, [])
 
   useEffect(() => {
+    if (!modelsRequested) return
     busy.current = false
     let worker: Worker
     let recovered = false
@@ -94,6 +103,7 @@ export function usePoseCamera() {
         if (recovered || runtimeMode === 'wasm') { fail(`WASM recovery failed: ${message.reason}`); return }
         recovered = true; workerReady.current = false; busy.current = false
         latest.current = null; timingWindow.current = newTimingWindow()
+        pacing.current = newFramePacing(estimateDevice().kind)
         setFrame(null); setWorking(false); setModels('recovering'); setRecoveryReason(message.reason)
         setTiming(null); setStatistics({}); setSampleCount(0); setInferenceFps(0); setLatency(0)
         count = 0; since = performance.now(); measuredGeneration = -1
@@ -109,6 +119,7 @@ export function usePoseCamera() {
       const sample = { ...result.timings, frameAgeMs: now - result.capturedAt }
       setTiming(sample)
       if (modeRef.current === 'camera') {
+        recordFrameCompletion(pacing.current, now, result.capturedAt, result.runtime.revision)
         recordTiming(timingWindow.current, result.runtime.revision, sample)
         setStatistics(summarizeTimings(timingWindow.current)); setSampleCount(timingWindow.current.samples.length)
         if (measuredGeneration !== result.generation) { measuredGeneration = result.generation; count = 0; since = now }
@@ -133,13 +144,7 @@ export function usePoseCamera() {
     launch(runtimeMode)
     navigator.mediaDevices?.addEventListener('devicechange', refreshDevices)
     const watchdog = window.setInterval(() => {
-      const video = videoRef.current
-      if (modeRef.current === 'camera' && video) {
-        const frames = video.getVideoPlaybackQuality().totalVideoFrames
-        if (frames !== cameraProgress.current.frames && frames > 0) {
-          cameraProgress.current = { frames, at: performance.now() }; setCameraFrameAt(cameraProgress.current.at)
-        }
-      }
+      if (modeRef.current === 'camera') setCameraFrameAt(cameraFrameTime.current)
       if (modeRef.current === 'camera' && latest.current && performance.now() - latest.current.capturedAt > POSE_CONFIG.staleMs) {
         latest.current = null; setFrame(null); setInferenceFps(0)
       }
@@ -148,22 +153,21 @@ export function usePoseCamera() {
       clearInterval(watchdog); navigator.mediaDevices?.removeEventListener('devicechange', refreshDevices)
       stop(); worker.terminate(); workerRef.current = null; workerReady.current = false
     }
-  }, [attempt, runtimeMode, refreshDevices, stop])
+  }, [modelsRequested, attempt, runtimeMode, refreshDevices, stop])
 
-  async function start(deviceId: string) {
-    if (models !== 'ready') return
+  async function start(deviceId: string, facing = preferredFacing.current, strictFacing = false) {
+    if (models !== 'ready' || modeRef.current === 'starting') return
     stop(); setError('')
     const current = generation.current
     modeRef.current = 'starting'; setMode('starting')
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera requires localhost or HTTPS in a supported browser.')
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { width: { ideal: 1280 }, height: { ideal: 720 },
-          ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }) },
-      })
+      const source = await requestCameraSource(navigator.mediaDevices, deviceId, facing, strictFacing)
+      const { stream } = source
       if (current !== generation.current) { stream.getTracks().forEach((track) => track.stop()); return }
       streamRef.current = stream
+      setCameraFacing(source.facing)
+      if (source.facing) preferredFacing.current = source.facing
       const video = videoRef.current
       if (!video) throw new Error('Camera preview is unavailable.')
       stream.getVideoTracks().forEach((track) => {
@@ -174,19 +178,16 @@ export function usePoseCamera() {
       if (current !== generation.current) return
       modeRef.current = 'camera'; setMode('camera')
       void refreshDevices()
-      const capture = { lastSent: -1, previousFrames: video.getVideoPlaybackQuality().totalVideoFrames, since: performance.now() }
-      const tick = () => {
+      const capture = { frames: 0, since: performance.now() }
+      cancelCapture.current = observeCameraFrames(video, (now) => {
         if (current !== generation.current) return
-        animation.current = requestAnimationFrame(tick)
-        const now = performance.now()
+        cameraFrameTime.current = now
+        capture.frames++
         if (now - capture.since >= 1000) {
-          const total = video.getVideoPlaybackQuality().totalVideoFrames
-          setPreviewFps((total - capture.previousFrames) * 1000 / (now - capture.since))
-          capture.previousFrames = total; capture.since = now
+          setPreviewFps(capture.frames * 1000 / (now - capture.since))
+          capture.frames = 0; capture.since = now
         }
-        const decodedFrames = video.getVideoPlaybackQuality().totalVideoFrames
-        if (!workerReady.current || busy.current || video.readyState < 2 || decodedFrames === capture.lastSent) return
-        capture.lastSent = decodedFrames
+        if (!workerReady.current || busy.current || !takeCameraFrame(pacing.current, now)) return
         busy.current = true; setWorking(true)
         const targetWorker = workerRef.current
         void createImageBitmap(video).then((bitmap) => {
@@ -201,8 +202,7 @@ export function usePoseCamera() {
           if (current !== generation.current) return
           stop(); setError(cause instanceof Error ? cause.message : 'Could not read the camera frame.')
         })
-      }
-      tick()
+      })
     } catch (cause) {
       if (current !== generation.current) return
       stop()
@@ -210,6 +210,7 @@ export function usePoseCamera() {
       setError(name === 'NotAllowedError' ? 'Camera Access Denied. Allow camera access in browser settings and start again.' :
         name === 'NotFoundError' ? 'No Camera Found. Connect a webcam and start again.' :
         name === 'NotReadableError' ? 'Camera Unavailable. Close other apps using the camera and start again.' :
+        name === 'OverconstrainedError' ? 'ไม่พบกล้องที่เลือก กรุณาเลือกกล้องจากรายการแล้วเปิดใหม่' :
         cause instanceof Error ? cause.message : 'Camera could not start.')
     }
   }
@@ -239,7 +240,12 @@ export function usePoseCamera() {
     resetRuntime(); setRuntimeMode(value)
   }
   const getStream = useCallback(() => streamRef.current, [])
+  async function switchCamera() {
+    if (modeRef.current !== 'camera') return
+    await start('', (cameraFacing ?? preferredFacing.current) === 'user' ? 'environment' : 'user', true)
+  }
   return { videoRef, getStream, mode, models, error, frame, devices, working, previewFps, inferenceFps, cameraFrameAt,
+    cameraFacing, switchCamera,
     runtimeMode, runtimeInfo, recoveryReason, timing, statistics, sampleCount, changeRuntimeMode,
     latency, imageUrl, start, stop, inspectImage, retryModels: () => {
       resetRuntime(); setAttempt((value) => value + 1)

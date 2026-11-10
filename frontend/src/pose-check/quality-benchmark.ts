@@ -87,7 +87,8 @@ export function benchmarkQuality(datasetValue: unknown, configValue: unknown = Q
   const dataset = parseBenchmarkDataset(datasetValue), config = parseBenchmarkConfig(configValue)
   const samples = dataset.samples.map((sample) => {
     const { checks } = evaluateQuality(sample.frame, config), issues = sortIssues(checks)
-    const predicted = !issues.length ? 'pass' : checks.some((check) => check.state === 'fail') ? 'fail' : 'unknown'
+    const blockers = issues.filter((check) => check.blocking)
+    const predicted = !blockers.length ? 'pass' : blockers.some((check) => check.state === 'fail') ? 'fail' : 'unknown'
     const { frame: _, ...identity } = sample
     return { ...identity, predicted, checks, reasonCodes: issues.map((issue) => issue.reason) }
   })

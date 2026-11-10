@@ -22,9 +22,9 @@ export function QualityDebug({ config, onChange, gate }: {
     </div>
     <button type="button" className="rounded border border-slate-200 px-3 py-2 text-sm" onClick={() => onChange({ ...QUALITY_CONFIG })}>Reset Experimental Criteria</button>
     <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-      <thead><tr><th>Reason Code</th><th>Check</th><th>Measured Value</th></tr></thead>
+      <thead><tr><th>Reason Code</th><th>Check</th><th>Effect</th><th>Measured Value</th></tr></thead>
       <tbody>{gate.checks.map((check) => <tr key={check.reason} className="border-b border-slate-100">
-        <td className="py-1 font-mono">{check.reason}</td><td>{check.state}</td><td>{check.value?.toFixed(3) ?? 'unknown'}</td>
+        <td className="py-1 font-mono">{check.reason}</td><td>{check.state}</td><td>{check.blocking ? 'Required' : 'Warning only'}</td><td>{check.value?.toFixed(3) ?? 'unknown'}</td>
       </tr>)}</tbody>
     </table></div>
   </details>
