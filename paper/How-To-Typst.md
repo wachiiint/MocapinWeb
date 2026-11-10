@@ -50,7 +50,9 @@ $ x^2 $ math on own line
 ```
 
 ## Run
-```
-typst watch paper/main.typ paper/draft.pdf
-// [Anti-Slop: 60% - @owner - tag part as AI generated]
+```bash
+# hot reload
+typst watch paper/main.typ paper/draft.pdf 
+# export
+typst compile paper/main.typ paper/draft.pdf
 ```
