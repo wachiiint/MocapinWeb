@@ -1,4 +1,5 @@
 // Paper diagrams (fletcher). Import into main.typ: #import "diagrams.typ": arch-diagram
+// [Anti-Slop: 50% - @wachi - LGTM, mostly correct]
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
 
 // Layer colours: data, anatomy, motion, clinical
