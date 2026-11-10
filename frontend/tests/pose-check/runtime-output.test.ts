@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Tensor } from 'onnxruntime-web/wasm'
-import { compareDetectorOutput, comparePoseOutput } from './runtime-output.ts'
+import { compareDetectorOutput, comparePoseOutput } from '../../src/pose-check/runtime-output.ts'
 
 function detector(rows: number[][]) {
   return { dets: new Tensor('float32', new Float32Array(rows.flat()), [1, rows.length, 5]),

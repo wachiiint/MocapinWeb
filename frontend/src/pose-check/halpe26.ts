@@ -9,6 +9,10 @@ export const KEYPOINT_NAMES = [
   'Left Heel', 'Right Heel',
 ]
 
+// Keep all HALPE26 outputs; readiness excludes only the nose, eyes and ears.
+export const REQUIRED_KEYPOINT_INDICES = KEYPOINT_NAMES.flatMap((name, index) =>
+  ['Nose', 'Left Eye', 'Right Eye', 'Left Ear', 'Right Ear'].includes(name) ? [] : [index])
+
 export const SKELETON = [
   [15, 13], [13, 11], [11, 19], [16, 14], [14, 12], [12, 19],
   [17, 18], [18, 19], [18, 5], [5, 7], [7, 9], [18, 6], [6, 8], [8, 10],

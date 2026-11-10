@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { compareReferenceRuns, parseReferenceRun } from '../../compare-reference.ts'
-import { KEYPOINT_NAMES } from './halpe26.ts'
+import { KEYPOINT_NAMES } from '../../src/pose-check/halpe26.ts'
 
 // Synthetic contract fixtures only. These do not establish official pipeline parity.
 function run() {

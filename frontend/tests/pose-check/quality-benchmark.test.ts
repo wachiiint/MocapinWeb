@@ -1,24 +1,32 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { benchmarkQuality, parseBenchmarkDataset } from './quality-benchmark.ts'
-import { syntheticQualityDataset } from './quality-benchmark.fixture.ts'
-import { QUALITY_CONFIG } from './quality-config.ts'
+import { benchmarkQuality, parseBenchmarkDataset } from '../../src/pose-check/quality-benchmark.ts'
+import { syntheticQualityDataset } from '../../src/pose-check/quality-benchmark.fixture.ts'
+import { QUALITY_CONFIG } from '../../src/pose-check/quality-config.ts'
 
 test('procedural image cases run actual pixel analysis and keep calibration/acceptance results separate', () => {
   const report = benchmarkQuality(syntheticQualityDataset())
   assert.equal(report.samples.length, 22)
   for (const split of report.results) {
     assert.equal(split.synthetic.goodPassed, 1)
-    assert.equal(split.synthetic.badPassed, 0)
-    assert.equal(split.synthetic.badBlocked, 10)
+    // Keep the original image-quality labels: the relaxed gate intentionally admits these cases.
+    assert.equal(split.synthetic.badPassed, 4)
+    assert.equal(split.synthetic.badBlocked, 6)
     assert.equal(split.human.total, 0)
     assert.equal(split.human.falseAcceptanceRate, null)
     assert.equal(split.human.falseWarningRate, null)
   }
   for (const [id, code] of [['dark', 'DARK'], ['clipped', 'CLIPPED'], ['backlight', 'BACKLIGHT'], ['blur', 'BLUR'],
-    ['feet-out', 'FRAMING'], ['near-edge', 'FRAMING'], ['far', 'PERSON_SMALL'], ['occluded', 'KEYPOINTS'],
+    ['feet-out', 'KEYPOINTS'], ['far', 'PERSON_SMALL'], ['occluded', 'KEYPOINTS'],
     ['no-person', 'NO_PERSON'], ['multiple', 'MULTIPLE_PEOPLE']] as const) {
     for (const split of ['calibration', 'acceptance']) assert.ok(report.samples.find((s) => s.id === `${split}-${id}`)?.reasonCodes.includes(code))
+  }
+  for (const condition of ['clipped', 'backlight', 'blur', 'near-edge']) {
+    for (const split of ['calibration', 'acceptance']) {
+      const sample = report.samples.find((s) => s.id === `${split}-${condition}`)!
+      assert.equal(sample.predicted, 'pass')
+      assert.ok(sample.checks.filter((c) => c.state !== 'pass').every((c) => !c.blocking))
+    }
   }
 })
 
@@ -34,9 +42,9 @@ test('confusion counts expose false acceptance and false warning without mixing 
   assert.equal(result.synthetic.total, 1)
 })
 
-test('unknown measurements never pass, and missing label classes have unavailable rates', () => {
+test('unknown required measurements never pass, and missing label classes have unavailable rates', () => {
   const data = syntheticQualityDataset(), sample = data.samples[0]
-  sample.frame.quality.backgroundLuma = null
+  sample.frame.quality.personLuma = null; sample.frame.quality.personHistogram = []; sample.frame.quality.sharpness = null
   data.samples = [sample]
   const report = benchmarkQuality(data)
   assert.equal(report.samples[0].predicted, 'unknown')

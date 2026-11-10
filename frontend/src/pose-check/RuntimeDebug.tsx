@@ -1,5 +1,6 @@
 import type { RuntimeInfo, RuntimeMode, TimingSample } from './halpe26'
 import { TIMING_LABELS, type summarizeTimings } from './runtime-stats'
+import { estimateDevice } from './device-info'
 
 type Props = {
   mode: RuntimeMode; info: RuntimeInfo | null; disabled: boolean; onModeChange(mode: RuntimeMode): void
@@ -7,9 +8,18 @@ type Props = {
 }
 
 export function RuntimeDebug({ mode, info, disabled, onModeChange, latest, statistics, sampleCount, recoveryReason }: Props) {
+  const device = estimateDevice()
+  const deviceLabel = { phone: 'โทรศัพท์', tablet: 'แท็บเล็ต', desktop: 'คอมพิวเตอร์', unknown: 'ระบุไม่ได้' }
+  const sourceLabel = { 'user-agent': 'ข้อมูลอุปกรณ์จากเบราว์เซอร์', 'client-hints': 'ข้อมูลมือถือจากเบราว์เซอร์',
+    'touch-heuristic': 'ข้อมูล Mac ร่วมกับการรองรับหลายจุดสัมผัส', unavailable: 'ข้อมูลไม่เพียงพอ' }
   const milliseconds = (value?: number) => value === undefined ? '—' : value.toFixed(1)
   return (
     <section className="my-4 space-y-4 border-b border-slate-200 pb-5">
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div><dt className="font-medium">ประเภทอุปกรณ์โดยประมาณ</dt><dd>{deviceLabel[device.kind]}</dd></div>
+        <div><dt className="font-medium">วิธีประเมิน</dt><dd>{sourceLabel[device.source]}</dd></div>
+      </dl>
+      {!info && <p className="text-sm text-slate-600">WebGPU/WASM: รอผลจากระบบตรวจท่าทาง</p>}
       <label className="flex flex-wrap items-center gap-3 text-sm font-medium">Runtime Mode
         <select value={mode} disabled={disabled} onChange={(event) => onModeChange(event.target.value as RuntimeMode)} className="min-h-11 rounded-md border border-slate-200 bg-white px-3">
           <option value="auto">Auto</option><option value="wasm">WASM</option>

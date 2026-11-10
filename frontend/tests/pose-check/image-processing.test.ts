@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { decodePeople, decodeSimCC, detectorInput, poseCrop, poseInput } from './image-processing.ts'
-import { isClear } from './halpe26.ts'
+import { decodePeople, decodeSimCC, detectorInput, poseCrop, poseInput } from '../../src/pose-check/image-processing.ts'
+import { isClear } from '../../src/pose-check/halpe26.ts'
 
 function near(actual: number, expected: number) { assert.ok(Math.abs(actual - expected) < 0.0001, `${actual} != ${expected}`) }
 

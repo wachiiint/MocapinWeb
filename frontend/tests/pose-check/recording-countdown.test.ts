@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { recordingCountdown } from './recording-countdown.ts'
+import { recordingCountdown } from '../../src/pose-check/recording-countdown.ts'
 
 test('counts five seconds across frequent fresh frames and starts exactly once', () => {
   const countdown = recordingCountdown()

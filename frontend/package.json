@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test": "tsc -p tsconfig.test.json --noEmit && node --test src/pose-check/*.test.ts",
+    "test": "tsc -p tsconfig.test.json --noEmit && node --test tests/pose-check/*.test.ts",
     "prepare:models": "powershell -NoProfile -File ./prepare-models.ps1",
     "dev": "vite",
     "prepare:https": "powershell -NoProfile -File ./prepare-https.ps1",

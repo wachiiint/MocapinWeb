@@ -21,6 +21,7 @@ export function RecordingControls({ recording, canStart }: {
       {result.report.stopReason !== 'user-stopped' && <p className="text-lg text-amber-800">การอัดสิ้นสุดก่อนกดหยุด เก็บวิดีโอไว้แล้ว</p>}
       {result.videoUrl && <video src={result.videoUrl} controls playsInline className="w-full rounded-2xl bg-slate-950" aria-label="ดูวิดีโอที่อัด" />}
       <p className="text-lg">ช่วงที่ควรตรวจสอบ: {result.report.issueIntervals.length}</p>
+      <p className="text-base text-slate-600">คำเตือนเพิ่มเติม: {result.report.issueIntervals.filter((interval) => !interval.blocking).length} ช่วง · ข้อบังคับมีปัญหา: {result.report.issueIntervals.filter((interval) => interval.blocking).length} ช่วง</p>
       <div className="flex flex-wrap gap-3 text-lg">
         {result.videoUrl && <a className="inline-flex min-h-12 items-center rounded-full border border-slate-300 px-4 py-2" href={result.videoUrl} download={`${result.filename}.${result.extension}`}>ดาวน์โหลดวิดีโอ</a>}
         <a className="inline-flex min-h-12 items-center rounded-full border border-slate-300 px-4 py-2" href={result.reportUrl} download={`${result.filename}-quality.json`}>ดาวน์โหลดรายงาน</a>

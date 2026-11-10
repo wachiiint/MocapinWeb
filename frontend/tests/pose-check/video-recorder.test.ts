@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { recordVideo } from './video-recorder.ts'
-import { evaluateReadiness } from './readiness.ts'
-import { goodFrame } from './quality.fixture.ts'
-import { QUALITY_CONFIG } from './quality-config.ts'
-import type { RecordingSnapshot, RecordingQualityReport } from './recording-report.ts'
+import { recordVideo } from '../../src/pose-check/video-recorder.ts'
+import { evaluateReadiness } from '../../src/pose-check/readiness.ts'
+import { goodFrame } from '../../src/pose-check/quality.fixture.ts'
+import { QUALITY_CONFIG } from '../../src/pose-check/quality-config.ts'
+import type { RecordingSnapshot, RecordingQualityReport } from '../../src/pose-check/recording-report.ts'
 
 class FakeRecorder extends EventTarget {
   state: RecordingState = 'inactive'
@@ -31,7 +31,7 @@ function setup() {
       const readiness = evaluateReadiness(null, { mode: 'camera', models: 'ready', error: '', frame,
         cameraFrameAt: now, visible: true, config: QUALITY_CONFIG }, now)
       return { frame, readiness: { ...readiness, canStartRecording: allowed,
-        issues: bad ? [{ state: 'fail', reason: 'DARK', value: 0 }] : [] }, visible: true, modelsReady: true }
+        issues: bad ? [{ state: 'fail', reason: 'DARK', value: 0, blocking: true }] : [] }, visible: true, modelsReady: true }
     },
   }
   return { recorder, options, completed, errors,
@@ -49,7 +49,7 @@ test('records through quality failures and waits for final data before completin
   assert.equal(s.completed.length, 1)
   assert.equal(await s.completed[0].video.text(), 'firstlast')
   assert.equal(s.completed[0].report.durationMs, 300)
-  assert.deepEqual(s.completed[0].report.issueIntervals, [{ startMs: 100, endMs: 300, reasonCodes: ['DARK'] }])
+  assert.deepEqual(s.completed[0].report.issueIntervals, [{ startMs: 100, endMs: 300, reasonCodes: ['DARK'], blocking: true }])
 })
 
 test('ineligible or disconnected starts are rejected and encoder startup failures leave no live session', () => {

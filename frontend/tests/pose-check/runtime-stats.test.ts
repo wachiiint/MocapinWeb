@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { newTimingWindow, recordTiming, summarizeTimings } from './runtime-stats.ts'
-import type { TimingSample } from './halpe26.ts'
+import { newTimingWindow, recordTiming, summarizeTimings } from '../../src/pose-check/runtime-stats.ts'
+import type { TimingSample } from '../../src/pose-check/halpe26.ts'
 
 function sample(value: number): TimingSample {
   return { readPixelsMs: value, detectorPreMs: value, detectorRunMs: value, detectorDecodeMs: value,

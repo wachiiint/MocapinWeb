@@ -2,6 +2,7 @@ import { loadPoseRuntime } from './pose-runtime'
 import type { WorkerRequest, WorkerReply } from './halpe26'
 import { measurePixelQuality } from './quality-pixels'
 import { QUALITY_CONFIG } from './quality-config'
+import { modelBytes } from './model-cache'
 
 let runtime: Awaited<ReturnType<typeof loadPoseRuntime>> | undefined
 let busy = false
@@ -9,13 +10,6 @@ const canvas = new OffscreenCanvas(1, 1)
 const context = canvas.getContext('2d', { willReadFrequently: true })
 
 function reply(message: WorkerReply) { self.postMessage(message) }
-async function modelBytes(url: string) {
-  const response = await fetch(url)
-  if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {
-    throw new Error('Default model files are missing. Run npm run prepare:models and retry.')
-  }
-  return new Uint8Array(await response.arrayBuffer())
-}
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const message = event.data

@@ -1,17 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { collectRecordingQuality, type RecordingSnapshot } from './recording-report.ts'
-import { evaluateReadiness, type Readiness } from './readiness.ts'
-import { QUALITY_CONFIG } from './quality-config.ts'
-import { goodFrame } from './quality.fixture.ts'
-import type { ReasonCode } from './quality-checks.ts'
+import { collectRecordingQuality, type RecordingSnapshot } from '../../src/pose-check/recording-report.ts'
+import { evaluateReadiness, type Readiness } from '../../src/pose-check/readiness.ts'
+import { QUALITY_CONFIG } from '../../src/pose-check/quality-config.ts'
+import { goodFrame } from '../../src/pose-check/quality.fixture.ts'
+import { isBlockingReason, type ReasonCode } from '../../src/pose-check/quality-checks.ts'
 
 function snapshot(now: number, reasons: ReasonCode[] = []): RecordingSnapshot {
   const frame = goodFrame(now)
   const readiness = evaluateReadiness(null, { mode: 'camera', models: 'ready', error: '', frame,
     cameraFrameAt: now, visible: true, config: QUALITY_CONFIG }, now)
   return { frame, readiness: { ...readiness, canStartRecording: true,
-    issues: reasons.map((reason) => ({ state: 'fail', reason, value: null })) }, visible: true, modelsReady: true }
+    issues: reasons.map((reason) => ({ state: 'fail', reason, value: null, blocking: isBlockingReason(reason) })) }, visible: true, modelsReady: true }
 }
 
 test('quality intervals merge continuous reasons and preserve separate onset and recovery times', () => {
@@ -24,14 +24,15 @@ test('quality intervals merge continuous reasons and preserve separate onset and
   log.observe(snapshot(1500), 1500)
   const report = log.finish(1600, 'user-stopped', 'video/webm')
   assert.deepEqual(report.issueIntervals, [
-    { startMs: 100, endMs: 400, reasonCodes: ['DARK'] },
-    { startMs: 200, endMs: 500, reasonCodes: ['BLUR'] },
+    { startMs: 100, endMs: 400, reasonCodes: ['DARK'], blocking: true },
+    { startMs: 200, endMs: 500, reasonCodes: ['BLUR'], blocking: false },
   ])
   assert.equal(report.durationMs, 600)
   assert.equal(report.frames[0].keypoints.length, 26)
   assert.equal(report.frames[0].configVersion, QUALITY_CONFIG.version)
   assert.equal(report.frames[1].capturedOffsetMs, 100)
-  assert.equal(report.frames[1].checks.length, 10)
+  assert.equal(report.frames[1].checks.length, 9)
+  assert.equal(report.schemaVersion, 2)
 })
 
 test('snapshot data and config are retained independently, repeated/pre-recording frames are omitted', () => {
@@ -53,7 +54,7 @@ test('unknown checks, hidden pages, unavailable models and scheduling gaps are r
   const log = collectRecordingQuality(0, QUALITY_CONFIG, { width: 640, height: 480 }, 'test')
   const hidden = snapshot(100)
   hidden.visible = false; hidden.modelsReady = false
-  hidden.readiness.issues = [{ state: 'unknown', reason: 'POSE_UNKNOWN', value: null }]
+  hidden.readiness.issues = [{ state: 'unknown', reason: 'POSE_UNKNOWN', value: null, blocking: true }]
   log.observe(snapshot(0), 0); log.observe(hidden, 100)
   log.observe(snapshot(2200), 2200)
   const report = log.finish(2300, 'recorder-error', 'video/webm')
@@ -68,7 +69,20 @@ test('finishing closes ongoing warnings and rejects backwards observations', () 
   assert.throws(() => log.observe(snapshot(1050), 1050), /monotonic/)
   assert.throws(() => log.finish(1050, 'user-stopped', ''), /precedes/)
   assert.deepEqual(log.finish(1400, 'camera-stopped', 'video/webm').issueIntervals,
-    [{ startMs: 100, endMs: 400, reasonCodes: ['DARK'] }])
+    [{ startMs: 100, endMs: 400, reasonCodes: ['DARK'], blocking: true }])
+})
+
+test('simultaneous warnings and blockers retain separate severity in intervals and frame checks', () => {
+  const log = collectRecordingQuality(0, QUALITY_CONFIG, { width: 640, height: 480 }, 'test')
+  log.observe(snapshot(100, ['DARK', 'BLUR', 'BACKLIGHT']), 100)
+  log.observe(snapshot(200), 200)
+  const report = log.finish(300, 'user-stopped', 'video/webm')
+  assert.deepEqual(report.issueIntervals, [
+    { startMs: 100, endMs: 200, reasonCodes: ['DARK'], blocking: true },
+    { startMs: 100, endMs: 200, reasonCodes: ['BLUR', 'BACKLIGHT'], blocking: false },
+  ])
+  assert.ok(report.frames[0].checks.find((c) => c.reason === 'DARK')!.blocking)
+  assert.equal(report.frames[0].checks.find((c) => c.reason === 'BLUR')!.blocking, false)
 })
 
 test('a previously Ready result cannot authorize a late click after the result has expired', () => {
