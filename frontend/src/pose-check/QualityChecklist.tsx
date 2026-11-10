@@ -1,44 +1,54 @@
-import { Check, Minus, X } from 'lucide-react'
+import { Check, Minus, TriangleAlert } from 'lucide-react'
 import type { Readiness } from './readiness'
-import type { ReasonCode } from './quality-checks'
+import type { CheckState, ReasonCode } from './quality-checks'
 
-const ITEMS: { label: string; reasons: ReasonCode[]; failure: string }[] = [
-  { label: 'จุดร่างกายครบ', reasons: ['KEYPOINTS', 'KEYPOINTS_UNKNOWN'], failure: 'จุดร่างกายไม่ครบ' },
-  { label: 'แสงเพียงพอและไม่ย้อนแสง', reasons: ['DARK', 'LIGHT_UNKNOWN', 'BACKLIGHT', 'BACKLIGHT_UNKNOWN'], failure: 'แสงไม่ผ่าน' },
-  { label: 'มีคนเดียวในภาพ', reasons: ['NO_PERSON', 'MULTIPLE_PEOPLE', 'PEOPLE_UNKNOWN'], failure: 'คนมากกว่า 1 คน' },
-  { label: 'เห็นเต็มตัว', reasons: ['FRAMING', 'FRAMING_UNKNOWN'], failure: 'เห็นไม่เต็มตัว' },
-]
+const ICONS = { pass: Check, fail: TriangleAlert, unknown: Minus }
+const COLORS = {
+  pass: 'bg-emerald-50 text-emerald-700',
+  fail: 'bg-amber-50 text-amber-800',
+  unknown: 'bg-slate-100 text-slate-600',
+}
 
-export function QualityChecklist({ gate }: { gate: Pick<Readiness, 'checks' | 'showOverlay'> }) {
-  return <section aria-labelledby="quality-checklist-title" className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 id="quality-checklist-title" className="text-lg font-semibold">ตรวจความพร้อม</h2>
-    <ul aria-live="polite" className="divide-y divide-slate-200">
-      {ITEMS.map((item) => {
-        const checks = gate.checks.filter((entry) => item.reasons.includes(entry.reason))
-        // Old results must never keep a green tick after camera/model/visibility loss.
-        const state = gate.showOverlay
-          ? checks.some((check) => check.state === 'fail') ? 'fail'
-            : checks.some((check) => check.state === 'unknown') ? 'unknown' : 'pass'
-          : 'unknown'
-        const Icon = state === 'pass' ? Check : state === 'fail' ? X : Minus
-        const failed = checks.filter((check) => check.state === 'fail')
-        const hasDark = failed.some((check) => check.reason === 'DARK')
-        const hasBacklight = failed.some((check) => check.reason === 'BACKLIGHT')
-        const message = state === 'pass' ? 'ผ่าน' : state === 'unknown' ? 'รอตรวจ' :
-          checks.some((check) => check.reason === 'NO_PERSON') ? 'ไม่พบคนในภาพ' :
-          item.reasons.includes('DARK') ? hasDark && hasBacklight ? 'แสงไม่พอและอาจย้อนแสง' :
-            hasDark ? 'แสงไม่พอ' : 'อาจมีแสงย้อนจากด้านหลัง' : item.failure
-        const color = state === 'pass' ? 'text-green-800' : state === 'fail' ? 'text-amber-900' : 'text-slate-600'
-        return <li key={item.label} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${state === 'pass' ? 'bg-green-50' : state === 'fail' ? 'bg-amber-50' : 'bg-slate-100'} ${color}`}>
-            <Icon size={24} aria-hidden="true" />
-          </span>
-          <div className="min-w-0 text-lg">
-            <p className="font-medium text-slate-900">{item.label}</p>
-            <p className={color}>{message}</p>
-          </div>
-        </li>
-      })}
-    </ul>
-  </section>
+export function QualityChecklist({ gate }: { gate: Pick<Readiness, 'checks' | 'showOverlay' | 'clearCount'> }) {
+  function stateFor(reasons: ReasonCode[], expected = 1): CheckState {
+    const checks = gate.checks.filter((check) => reasons.includes(check.reason))
+    if (!gate.showOverlay || checks.length !== expected) return 'unknown'
+    if (checks.some((check) => check.state === 'fail')) return 'fail'
+    return checks.every((check) => check.state === 'pass') ? 'pass' : 'unknown'
+  }
+
+  const points = stateFor(['KEYPOINTS', 'KEYPOINTS_UNKNOWN'])
+  const light = stateFor(['DARK', 'LIGHT_UNKNOWN', 'BACKLIGHT', 'BACKLIGHT_UNKNOWN'], 2)
+  const people = stateFor(['NO_PERSON', 'MULTIPLE_PEOPLE', 'PEOPLE_UNKNOWN'])
+  const framing = stateFor(['FRAMING', 'FRAMING_UNKNOWN'])
+  const lightIssues: string[] = []
+  if (gate.checks.some((check) => check.reason === 'DARK' && check.state === 'fail')) lightIssues.push('แสงน้อย')
+  if (gate.checks.some((check) => check.reason === 'BACKLIGHT' && check.state === 'fail')) lightIssues.push('ย้อนแสง')
+  const peopleIssue = gate.checks.some((check) => check.reason === 'NO_PERSON') ? 'ไม่พบคน' : 'หลายคน'
+
+  let lightLabel = 'แสง'
+  if (light === 'pass') lightLabel = 'แสงดี'
+  if (light === 'fail') lightLabel = lightIssues.join(' · ')
+  let peopleLabel = 'จำนวนคน'
+  if (people === 'pass') peopleLabel = '1 คน'
+  if (people === 'fail') peopleLabel = peopleIssue
+
+  const items = [
+    { key: 'points', state: points, label: `จุดร่างกาย ${points === 'unknown' ? '—' : gate.clearCount}/26`, issue: 'จุดร่างกายไม่ครบ' },
+    { key: 'light', state: light, label: lightLabel, issue: lightIssues.join(' · ') },
+    { key: 'people', state: people, label: peopleLabel, issue: peopleIssue },
+    { key: 'framing', state: framing, label: framing === 'fail' ? 'ไม่เต็มตัว' : 'เต็มตัว', issue: 'ไม่เต็มตัว' },
+  ]
+
+  return <ul aria-label="ตรวจความพร้อม" aria-live="polite" className="flex flex-wrap gap-2">
+    {items.map((item) => {
+      const Icon = ICONS[item.state]
+      const message = item.state === 'pass' ? 'ผ่าน' : item.state === 'unknown' ? 'ยังไม่มีผลตรวจ' : item.issue
+      return <li key={item.key} aria-label={`${item.label}: ${message}`}
+        className={`inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold tabular-nums ${COLORS[item.state]}`}>
+        <Icon size={16} strokeWidth={2.5} className="shrink-0" aria-hidden="true" />
+        {item.label}
+      </li>
+    })}
+  </ul>
 }
