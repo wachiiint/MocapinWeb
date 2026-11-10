@@ -15,11 +15,11 @@
   abstract: [
     Age-related muscle weakness and sarcopenia are diagnosed by combining muscle strength, muscle quantity and physical performance, yet the performance component is still judged largely by a clinician watching the patient move, in person or on video. Visual gait assessment has poor-to-moderate inter-rater reliability, and the people who act on it --- physicians, physiotherapists, radiologists, dietitians, caregivers and the older patient --- each see only one fragment of the evidence. Machine-learning components for each fragment now exist: individual-muscle MRI segmentation, MRI biomarkers of strength, monocular video-to-biomechanics, and human motion forecasting. No published system integrates them into one pipeline whose outputs are defined, validated and reported against clinical standards.
 
-    We propose MRI-to-Motion (M2M), a standards-aligned architecture that (i) segments individual lower-limb muscles and intramuscular fat from MRI, (ii) converts them into a subject-specific musculoskeletal capacity model, (iii) recovers 3D kinematics and muscle-driven dynamics from a single RGB video of standard clinical tests (gait, chair-stand, Timed Up-and-Go), (iv) forecasts near-term motion and functional decline conditioned on the capacity model, and (v) maps every output onto clinical endpoints --- AWGS 2019 and EWGSOP2 criteria, Short Physical Performance Battery (SPPB) items and minimal clinically important differences. The architecture is specified with IEEE 1016 design viewpoints, and the evaluation protocol follows TRIPOD+AI, STARD and DECIDE-AI. We describe a three-cohort experimental design with baselines, ablations and agreement statistics. We expect that MRI-derived capacity will reduce kinematic and functional-endpoint error relative to video-only models, and that the pipeline will reach clinically acceptable agreement (ICC ≥ 0.75) with instrumented reference measures.
+    We propose MRI-to-Motion (M2M), a standards-aligned architecture that (i) segments individual lower-limb muscles and intramuscular fat from MRI, (ii) converts them into a subject-specific musculoskeletal capacity model, (iii) recovers 3D kinematics and muscle-driven dynamics from two calibrated smartphone videos --- or one video at lower accuracy --- of standard clinical tests (gait, chair-stand, Timed Up-and-Go), (iv) in a proposed extension, forecasts near-term motion and functional decline conditioned on the capacity model, and (v) maps every output onto clinical endpoints --- AWGS 2025 and EWGSOP2 criteria, Short Physical Performance Battery (SPPB) items and minimal clinically important differences. The architecture is specified with IEEE 1016 design viewpoints, and the evaluation protocol follows TRIPOD+AI, STARD and DECIDE-AI. We describe a three-cohort experimental design with baselines, ablations and agreement statistics. We expect that MRI-derived capacity will reduce kinematic and functional-endpoint error relative to video-only models, and that the pipeline will reach clinically acceptable agreement (ICC ≥ 0.75) with instrumented reference measures.
   ],
   keywords: (
     "sarcopenia", "muscle weakness", "older adults", "MRI muscle segmentation",
-    "musculoskeletal modeling", "monocular 3D human pose", "motion forecasting",
+    "musculoskeletal modeling", "multi-view 3D human pose", "motion forecasting",
     "clinical decision support", "IEEE 1016", "TRIPOD+AI",
   ),
 )
@@ -27,7 +27,7 @@
 = Introduction <sec-intro>
 
 == Clinical context
-Sarcopenia is now defined as a muscle disease in which low strength is the primary signal, low muscle quantity or quality confirms the diagnosis, and poor physical performance marks severity [1]. The Asian Working Group for Sarcopenia (AWGS 2019) operationalises this for Asian populations: handgrip < 28 kg (men) or < 18 kg (women), 6-m gait speed < 1.0 m/s, five-time chair-stand ≥ 12 s or SPPB ≤ 9, and appendicular lean mass by DXA or bioimpedance [2]. AWGS 2019 also introduced "possible sarcopenia" --- low strength or low performance without a mass measurement --- so that primary care can act before imaging is available [2].
+Sarcopenia is now defined as a muscle disease in which low strength is the primary signal, low muscle quantity or quality confirms the diagnosis, and poor physical performance marks severity [1]. The Asian Working Group for Sarcopenia (AWGS 2025) operationalises this for Asian populations and shifts the focus from sarcopenia to muscle health [2]. Diagnosis now rests on low muscle strength (handgrip) and low muscle mass; physical performance --- gait speed, five-time chair-stand, SPPB --- is no longer a diagnostic criterion but an outcome to be tracked over time [2]. Performance is therefore where repeated, objective measurement matters most.
 
 The burden is acute in Thailand. The 2024 national survey counted about 14 million people aged 60 or over, 20% of the population, making Thailand a "complete aged society" [3]. Gait speed matters at this scale because a decline of 0.1 m/s or 1 SPPB point within one year predicts higher five-year mortality [6], and gait speed itself stratifies survival in older adults [9].
 
@@ -62,8 +62,8 @@ What is missing is integration. No published system carries a patient-specific, 
 == Contributions
 This paper makes four contributions:
 + A reference architecture (M2M) for the MRI-to-motion pipeline, specified with IEEE 1016 design viewpoints, that links seven modules from DICOM ingestion to stakeholder reports through explicit data contracts.
-+ A capacity-conditioned motion model that injects MRI-derived per-muscle maximum isometric force, fat-adjusted specific tension and moment-arm geometry into monocular 3D kinematics, muscle-driven dynamics and short-horizon forecasting.
-+ A clinical metric layer that converts every model output into AWGS 2019 / EWGSOP2 criteria, SPPB sub-scores and MCID-referenced change, each with a calibrated uncertainty.
++ A capacity-conditioned motion model that injects MRI-derived per-muscle maximum isometric force, fat-adjusted specific tension and moment-arm geometry into two-camera 3D kinematics (with a one-camera monocular mode) and muscle-driven dynamics, and, as a proposed extension, short-horizon forecasting.
++ A clinical metric layer that converts every model output into AWGS 2025 / EWGSOP2 criteria, SPPB sub-scores and MCID-referenced change, each with a calibrated uncertainty.
 + A standards-aligned evaluation protocol --- three cohorts, baselines, ablations and agreement statistics reported under TRIPOD+AI, STARD and DECIDE-AI --- that other groups can reuse.
 
 @sec-related reviews related work. @sec-arch presents the architecture. @sec-exp details the experimental design, with results to be reported. @sec-conclusion states the expected conclusions.
@@ -72,7 +72,7 @@ This paper makes four contributions:
 We group prior work into five strands. Each delivers one link of the MRI-to-motion chain; none delivers the chain.
 
 == Clinical assessment of age-related weakness
-EWGSOP2 [1] and AWGS 2019 [2] define the diagnostic algorithm; SPPB [7] and the Timed Up-and-Go (TUG) [8] are the standard performance batteries. Meaningful individual change is about 0.05 m/s (small) and 0.10 m/s (substantial) for gait speed, and 0.5 and 1.0 points for SPPB [5]. These thresholds are the natural accuracy targets for any automated system, yet vision papers rarely report against them. Observational assessment remains the norm, with inter-rater reliability too low for longitudinal tracking [4].
+EWGSOP2 [1] and AWGS 2025 [2] define the diagnostic algorithm; SPPB [7] and the Timed Up-and-Go (TUG) [8] are the standard performance batteries. Meaningful individual change is about 0.05 m/s (small) and 0.10 m/s (substantial) for gait speed, and 0.5 and 1.0 points for SPPB [5]. These thresholds are the natural accuracy targets for any automated system, yet vision papers rarely report against them. Observational assessment remains the norm, with inter-rater reliability too low for longitudinal tracking [4].
 
 == MRI segmentation of individual muscles
 Cascaded 3D CNNs segment 35 lower-limb muscles, 14 of them within inter-observer variability [13]. Supervised networks reach Dice 0.89--0.95 on thigh and leg muscles [14]. SegmentAnyMuscle generalises across anatomical sites with Dice 88.45% [15]. Self-configuring nnU-Net [16] underlies TotalSegmentator MRI, which segments 80 structures across sequences with Dice 0.839 on its internal test set [17]. Performance drops in older and post-menopausal cohorts, where Dice of 0.70--0.84 has been reported [18], and annotation cost motivates few-slice label propagation [19]. Segmentation alone yields geometry, not function.
@@ -111,7 +111,7 @@ PoseMoNet estimates 3D pose and forecasts future motion from 2D image sequences 
 TRIPOD+AI gives a 27-item checklist for prediction models built with regression or machine learning and supersedes TRIPOD 2015 [42]. STARD 2015 covers diagnostic accuracy [43], DECIDE-AI covers early clinical evaluation of AI decision support [44], and COSMIN covers measurement properties [50]. Agreement is assessed with Bland--Altman limits [45] and ICC with the Koo--Li interpretation bands [46]. On the engineering side, IEEE 1016 defines software design descriptions [47], IEC 62304 the medical-software lifecycle [48] and ISO 14971 risk management [49]. M2M is designed against all of these from the outset rather than retrofitted.
 
 = Proposed Architecture: MRI-to-Motion (M2M) <sec-arch>
-M2M turns one lower-limb MRI and one smartphone video of standard clinical tests into per-muscle capacity, observed and forecast motion, and clinical endpoints with uncertainty. It has seven modules in four layers: data, anatomy, motion and clinical (@fig-arch).
+M2M turns one lower-limb MRI and two calibrated smartphone videos (or one, at lower accuracy) of standard clinical tests into per-muscle capacity, observed and forecast motion, and clinical endpoints with uncertainty. It has seven modules in four layers: data, anatomy, motion and clinical (@fig-arch).
 
 == Design description per IEEE 1016
 We document the system with the IEEE 1016-2009 design viewpoints [47], so that clinicians, engineers and auditors can each find the view that answers their concern (@tab-viewpoints).
@@ -136,27 +136,27 @@ We document the system with the IEEE 1016-2009 design viewpoints [47], so that c
   rect(width: 100%, height: 6cm, stroke: (dash: "dashed"))[
     #align(center + horizon)[Architecture diagram from the professor's draft --- to be redrawn]
   ],
-  caption: [M2M architecture. MRI-derived capacity (M3) scales the skeleton for M4, constrains muscle forces in M5 and conditions forecasting in M6; M7 turns every output into clinical endpoints for each stakeholder.],
+  caption: [M2M architecture. MRI-derived capacity (M3) scales the skeleton for M4, constrains muscle forces in M5 and conditions forecasting in the proposed M6; M7 turns every output into clinical endpoints for each stakeholder.],
 ) <fig-arch>
 
 == Modules <sec-modules>
-*M1 --- Acquisition and quality control.* MRI: bilateral hip-to-ankle 2-point or 6-point Dixon (water, fat, in/opposed phase), 1.5 T or 3 T, ≤ 1.5 mm in-plane resolution, ingested as DICOM. Video: one smartphone at 30--60 fps, sagittal and 45° oblique views, recording 4-m or 6-m usual-pace gait, five-time chair-stand, TUG and the SPPB balance stands. A guided capture app enforces framing, distance and lighting, and records participant height for metric scale. Clinical data (handgrip, DXA, diet record) arrive as HL7 FHIR resources. Every input passes an automatic QC gate (motion artefact, fat--water swap, occlusion, frame drops) before it is analysed.
+*M1 --- Acquisition and quality control.* MRI: bilateral hip-to-ankle 2-point or 6-point Dixon (water, fat, in/opposed phase), 1.5 T or 3 T, ≤ 1.5 mm in-plane resolution, ingested as DICOM. Video: two time-synchronised smartphones at 30--60 fps on a fixed, calibrated rig (about 3 m from the patient, 90° apart, raised 45°), recording 4-m or 6-m usual-pace gait, five-time chair-stand, TUG and the SPPB balance stands; a single phone is accepted in monocular mode. During recording, a light pose model on the phone acts as a keypoint guard for framing, lighting and a single person in view; its keypoints are never stored. The app records participant height and weight for scaling. Clinical data (handgrip, DXA, diet record) arrive as HL7 FHIR resources. Every input passes an automatic QC gate (motion artefact, fat--water swap, occlusion, frame drops) before it is analysed.
 
 *M2 --- Muscle segmentation and quantification.* An nnU-Net [16] initialised from TotalSegmentator MRI [17] and fine-tuned on older-adult thighs and calves segments $K = 24$ lower-limb muscles per side plus subcutaneous fat, IMAT and femur/tibia. For each muscle $m$ it outputs volume $V_m$, anatomical CSA profile, proton-density fat fraction $"FF"_m$ and IMAT volume. A five-fold ensemble provides voxel-wise uncertainty; muscles whose mean uncertainty exceeds a threshold are flagged for radiologist review rather than passed on silently.
 
-*M3 --- Subject-specific capacity model.* M3 registers a generic musculoskeletal model (Rajagopal-type, OpenSim [25], [26]) to the MRI bones and muscle centroids, following automated geometry pipelines [21]. Bone lengths fix segment scaling; muscle paths give moment arms $r_m (q)$. Maximum isometric force is estimated from fat-corrected physiological CSA with a learned correction:
-$ F_m^max = sigma_0 dot V_m / L_m^"opt" dot (1 - "FF"_m) dot exp(g_phi (bold(z)_m)) $ <eq-fmax>
-where $sigma_0$ is specific tension, $L^"opt"$ the optimal fibre length, $bold(z)_m$ the muscle's image features (shape, IMAT ratio, texture) and $g_phi$ a small network calibrated against dynamometer torque [11], [12]. The capacity vector $bold(c) = {F_m^max, r_m, L_m^"opt"}$ and segment inertias [23] form the patient's digital musculoskeletal twin.
+*M3 --- Subject-specific capacity model.* M3 scales the Lai--Uhlrich full-body musculoskeletal model used by OpenCap [28] in OpenSim [25], [26]. When MRI is available, bone lengths from the MRI fix segment scaling, following automated geometry pipelines [21]; otherwise the OpenSim Scale tool uses height, weight and the video markers. Muscle paths give moment arms $r_m (q)$. Maximum isometric force is estimated from fat-corrected physiological CSA:
+$ F_m^max = sigma_0 dot (V_m cos theta_m) / L_m^"opt" dot (1 - "FF"_m) $ <eq-fmax>
+where $sigma_0 approx 60$ N/cm² is specific tension, $theta_m$ the pennation angle taken from the literature and $L^"opt"$ the optimal fibre length. Without MRI, generic $F_m^max$ values are kept. One MRI muscle label may map to several OpenSim muscles, and the supine MRI must be registered to OpenSim body frames. A learned correction $exp(g_phi (bold(z)_m))$ on the muscle's image features $bold(z)_m$ (shape, IMAT ratio, texture), calibrated against dynamometer torque [11], [12], is a planned extension. The capacity vector $bold(c) = {F_m^max, r_m, L_m^"opt"}$ and segment inertias [23] form the patient's digital musculoskeletal twin.
 
-*M4 --- Monocular motion recovery.* A 2D keypoint detector feeds a world-grounded SMPL [27] estimator (WHAM-class [41]); a learned anatomical-marker layer then drives inverse kinematics on the M3 skeleton, as in OpenCap Monocular [29]. Because the skeleton is MRI-scaled, bone-length ambiguity --- a main source of monocular depth error [39] --- is removed. Output: joint angles $q(t)$, velocities and pelvis trajectory, with per-frame confidence.
+*M4 --- Motion recovery.* The main mode uses two cameras. A fine-tuned RTMPose [53] detector gives 26 body and foot keypoints (HALPE_26) per camera and frame. Pose2Sim [51] triangulates the synchronised views with the rig calibration into 3D keypoints and applies a Butterworth low-pass filter. The OpenCap LSTM marker augmenter [28] then predicts about 43 anatomical markers from these keypoints, height and weight, and OpenSim inverse kinematics on the M3 model gives joint angles. The monocular mode takes one video: a world-grounded SMPL [27] estimator (WHAM [41]) recovers 3D joints, which feed the same augmenter and inverse kinematics, as in OpenCap Monocular [29]. Its outputs are flagged as lower accuracy. Because the skeleton is MRI-scaled, bone-length ambiguity --- a main source of monocular depth error [39] --- is reduced. Output: joint angles $q(t)$, velocities and pelvis trajectory, with per-frame confidence.
 
-*M5 --- Capacity-conditioned dynamics.* Given $q(t)$ and ground-contact estimates, M5 solves muscle redundancy with the patient's capacity $bold(c)$ instead of generic values. It computes joint moments, muscle forces $F_m (t)$ and the demand-to-capacity ratio
+*M5 --- Capacity-conditioned dynamics.* No force plates are used. Given $q(t)$, M5 runs a tracking simulation with foot--ground contact spheres (opencap-processing [28]) that estimates ground reaction forces and solves muscle redundancy with the patient's capacity $bold(c)$ instead of generic values. The simulation takes minutes per trial. It computes joint moments, muscle forces $F_m (t)$ and the demand-to-capacity ratio
 $ "DCR"_m (t) = (F_m (t)) / F_m^max, quad "DCR"_m^"peak" = max_t "DCR"_m (t) $ <eq-dcr>
 A DCR near 1 during a chair rise identifies the muscle that limits the task, which is the quantity a physiotherapist needs to target.
 
-*M6 --- Capacity-conditioned forecasting.* A spatio-temporal transformer takes the observed motion $q(t <= T)$, the capacity embedding $e(bold(c))$ and the DCR profile. It predicts (a) short-horizon motion $q(T+1 ... T+H)$, $H = 1"–"2$ s, to detect imminent instability such as a failed sit-to-stand, and (b) the functional trajectory: gait speed, chair-stand time and SPPB at 6 and 12 months under a "no change" or a counterfactual "capacity +x%" scenario. The counterfactual lets a dietitian or physiotherapist see the expected functional effect of a target muscle gain.
+*M6 --- Capacity-conditioned forecasting (proposed, not built in this phase).* A spatio-temporal transformer takes the observed motion $q(t <= T)$, the capacity embedding $e(bold(c))$ and the DCR profile. It predicts (a) short-horizon motion $q(T+1 ... T+H)$, $H = 1"–"2$ s, to detect imminent instability such as a failed sit-to-stand, and (b) the functional trajectory: gait speed, chair-stand time and SPPB at 6 and 12 months under a "no change" or a counterfactual "capacity +x%" scenario. The counterfactual lets a dietitian or physiotherapist see the expected functional effect of a target muscle gain.
 
-*M7 --- Clinical metric and reporting layer.* M7 converts outputs into the quantities clinicians use: gait speed, five-time chair-stand time, SPPB sub-scores, TUG time, AWGS 2019 / EWGSOP2 class, and change since the last visit relative to MCID (0.05/0.10 m/s, 0.5/1.0 SPPB points [5]). Split-conformal prediction gives each endpoint a 90% interval, and a class is reported as "indeterminate" when the interval spans a cut-off. Role-specific views are produced for each stakeholder in @tab-stakeholders, and results are written back as FHIR Observations.
+*M7 --- Clinical metric and reporting layer.* M7 converts outputs into the quantities clinicians use: gait speed, five-time chair-stand time, SPPB sub-scores, TUG time, AWGS 2025 / EWGSOP2 criteria, and change since the last visit relative to MCID (0.05/0.10 m/s, 0.5/1.0 SPPB points [5]). Split-conformal prediction gives each endpoint a 90% interval, and an endpoint is reported as "indeterminate" when the interval spans a cut-off. M7 never assigns a sarcopenia class: the clinician classifies, using handgrip and muscle mass as AWGS 2025 requires. Role-specific views are produced for each stakeholder in @tab-stakeholders, and results are written back as FHIR Observations.
 
 == Training objective
 M2 is trained separately with Dice + cross-entropy. M3--M6 are trained end-to-end after warm-starting:
@@ -171,11 +171,11 @@ $cal(L)_"kin"$ is joint-angle error against marker motion capture; $cal(L)_"phys
     columns: (0.8fr, 2fr, 1.2fr, 1fr),
     [From → To], [Content], [Format], [Units / frame],
     [M1 → M2], [Dixon water/fat volumes], [DICOM / NIfTI], [mm, scanner frame],
-    [M1 → M4], [Video, height, camera metadata], [MP4 + JSON], [px, fps, m],
+    [M1 → M4], [Two videos (or one), rig calibration, height, weight], [MP4 + TOML + JSON], [px, fps, m, kg],
     [M2 → M3], [Per-muscle mask, $V_m$, $"FF"_m$, IMAT, uncertainty], [NIfTI + JSON], [cm³, %, MRI frame],
-    [M3 → M4, M5], [Scaled skeleton, moment arms, $F_m^max$], [OpenSim .osim], [m, N, body frame],
-    [M4 → M5, M6], [$q(t)$, pelvis path, confidence], [.mot / Parquet], [deg, m, s],
-    [M5 → M6, M7], [Joint moments, $F_m (t)$, $"DCR"_m (t)$], [Parquet], [N·m/kg, N, ratio],
+    [M3 → M4, M5], [Scaled Lai--Uhlrich model, moment arms, $F_m^max$], [OpenSim .osim], [m, N, body frame],
+    [M4 → M5, M6], [Markers, $q(t)$, pelvis path, confidence], [.trc + .mot], [m, deg, s],
+    [M5 → M6, M7], [Ground reaction forces, joint moments, $F_m (t)$, $"DCR"_m (t)$], [Parquet], [N, N·m/kg, ratio],
     [M6 → M7], [Forecast motion and endpoint trajectories with intervals], [JSON], [deg, m/s, s, points],
     [M7 → users], [Endpoints, AWGS class, MCID change, views], [FHIR Observation + PDF], [clinical units],
   ),
@@ -188,9 +188,9 @@ The experiments test whether adding MRI-derived capacity to video analysis impro
 == Hypotheses
 - *H1 (anatomy).* M2 segments older-adult lower-limb muscles with mean Dice ≥ 0.85 and volume ICC ≥ 0.90 versus expert manual segmentation.
 - *H2 (capacity).* MRI-derived $F^max$ (@eq-fmax) predicts isokinetic knee-extension and hip-abduction torque better than lean CSA alone.
-- *H3 (motion).* MRI-scaled monocular kinematics reduce joint-angle error relative to generic-scaled monocular kinematics.
+- *H3 (motion).* MRI-scaled kinematics reduce joint-angle error relative to generic-scaled kinematics, and two-camera kinematics reduce error relative to the monocular mode.
 - *H4 (endpoints).* Video-derived gait speed, chair-stand time and SPPB agree with instrumented references within MCID, and AWGS classification reaches sensitivity ≥ 0.85.
-- *H5 (forecasting).* Capacity conditioning reduces 12-month functional forecast error relative to a motion-only forecaster.
+- *H5 (forecasting, proposed M6).* Capacity conditioning reduces 12-month functional forecast error relative to a motion-only forecaster.
 
 == Cohorts and ethics
 
@@ -198,8 +198,8 @@ The experiments test whether adding MRI-derived capacity to video analysis impro
   table(
     columns: (1fr, 1fr, 1.3fr, 1.8fr, 0.5fr),
     [Cohort], [Purpose], [Participants], [Measurements], [Planned n],
-    [C1 Lab development], [Train and validate M2--M6], [Adults ≥ 60 y: robust, possible sarcopenia, sarcopenia], [Dixon MRI, 10-camera marker mocap, force plates, isokinetic dynamometer, 8-channel sEMG, handgrip, DXA, smartphone video], [120],
-    [C2 Clinical validation], [Test endpoints and AWGS class (H4)], [Consecutive geriatric outpatients ≥ 60 y], [Dixon MRI, smartphone video in clinic, AWGS reference workup, two blinded clinician ratings], [260],
+    [C1 Lab development], [Train and validate M2--M6], [Adults ≥ 60 y: robust, possible sarcopenia, sarcopenia], [Dixon MRI, 10-camera marker mocap, force plates, isokinetic dynamometer, 8-channel sEMG, handgrip, DXA, two-smartphone video], [120],
+    [C2 Clinical validation], [Test endpoints and AWGS class (H4)], [Consecutive geriatric outpatients ≥ 60 y], [Dixon MRI, two-smartphone video in clinic, AWGS 2025 reference workup, two blinded clinician ratings], [260],
     [C3 Longitudinal], [Test forecasting (H5)], [Subset of C1 + C2; usual care or 12-week resistance exercise + protein], [Repeat video at 3, 6, 12 months; repeat MRI at 12 months], [100],
   ),
   caption: [Study cohorts],
@@ -219,7 +219,7 @@ C2 is sized for diagnostic precision: with expected sensitivity 0.85, a 95% CI h
     [Muscle activation timing], [Surface EMG],
     [Gait speed, chair-stand, TUG], [Instrumented walkway / timing gates; stopwatch by trained assessor],
     [SPPB], [Standard protocol scored by a blinded physiotherapist],
-    [Sarcopenia class], [AWGS 2019 full workup (handgrip, gait speed or chair-stand, DXA)],
+    [Sarcopenia class], [AWGS 2025 workup (handgrip, muscle mass by DXA)],
   ),
   caption: [Reference standard for each endpoint],
 ) <tab-reference>
@@ -239,10 +239,11 @@ C2 is sized for diagnostic precision: with expected sensitivity 0.85, a 95% CI h
     [ID], [Removed component], [Question answered],
     [A1], [MRI skeleton scaling in M4], [Does subject-specific geometry reduce monocular depth error?],
     [A2], [Fat-fraction term $(1 - "FF"_m)$ in @eq-fmax], [Does muscle quality matter beyond quantity?],
-    [A3], [Learned correction $g_phi$], [Is the physics prior alone sufficient?],
+    [A3], [Pennation term $cos theta_m$ in @eq-fmax], [Does fibre architecture matter beyond volume?],
     [A4], [Capacity embedding $e(bold(c))$ in M6], [Does capacity improve forecasting (H5)?],
     [A5], [$cal(L)_"clin"$ in @eq-loss], [Does endpoint supervision improve clinical agreement?],
     [A6], [Conformal intervals in M7], [Effect on false reassurance near AWGS cut-offs],
+    [A7], [Second camera (monocular mode)], [How much accuracy does one camera lose (H3)?],
   ),
   caption: [Ablations],
 ) <tab-ablations>
@@ -256,7 +257,7 @@ Each metric has a pre-registered acceptance threshold tied to a clinical or meas
     [Level], [Metric], [Acceptance threshold], [Basis],
     [Segmentation], [Dice, HD95, volume ICC(2,1)], [Dice ≥ 0.85; ICC ≥ 0.90], [Inter-observer range [13]; Koo--Li [46]],
     [Capacity], [Pearson r and RMSE vs. dynamometer torque], [r ≥ 0.75], [Prior MRI torque models [11]],
-    [Kinematics], [Joint-angle MAE, pelvis translation error], [MAE ≤ 5° sagittal], [Monocular state of the art [29]],
+    [Kinematics], [Joint-angle MAE, pelvis translation error], [MAE ≤ 5° sagittal], [OpenCap [28], OpenCap Monocular [29]],
     [Gait speed], [Bland--Altman bias and 95% LoA; ICC], [LoA within ±0.10 m/s; ICC ≥ 0.90], [Substantial MCID [5]; [45]],
     [Chair-stand, TUG], [Bland--Altman, ICC], [ICC ≥ 0.90], [[45], [46]],
     [SPPB], [Weighted κ; % within 1 point], [κ ≥ 0.80], [Substantial MCID [5]],
@@ -271,7 +272,7 @@ Each metric has a pre-registered acceptance threshold tied to a clinical or meas
 ) <tab-metrics>
 
 == Implementation <sec-impl>
-Models are implemented in PyTorch; musculoskeletal computations use OpenSim 4.x [26]. Training uses subject-level five-fold cross-validation on C1, with C2 held out entirely as an external test set. Target inference time is under 10 min per visit on one workstation GPU, so the pipeline can run on hospital premises.
+Models are implemented in PyTorch; triangulation uses Pose2Sim [51], and musculoskeletal computations use OpenSim 4.x [26] with opencap-processing [28]. Training uses subject-level five-fold cross-validation on C1, with C2 held out entirely as an external test set. Target inference time for kinematics is under 10 min per visit on one workstation GPU, so the pipeline can run on hospital premises; the contact-sphere simulation adds minutes per trial.
 
 == Results (to be reported)
 
@@ -295,9 +296,10 @@ Models are implemented in PyTorch; musculoskeletal computations use OpenSim 4.x 
     [M2M (full)], [], [], [], [],
     [A1 − MRI scaling], [], [], [], [],
     [A2 − fat-fraction term], [], [], [], [],
-    [A3 − learned correction], [], [], [], [],
+    [A3 − pennation term], [], [], [], [],
     [A4 − capacity in forecaster], [], [], [], [],
     [A5 − $cal(L)_"clin"$], [], [], [], [],
+    [A7 − second camera], [], [], [], [],
   ),
   caption: [Ablations on C1 (to be completed)],
 ) <tab-ablation-results>
@@ -305,15 +307,15 @@ Models are implemented in PyTorch; musculoskeletal computations use OpenSim 4.x 
 = Conclusion (Expected) <sec-conclusion>
 This section states the conclusions the study is designed to support. Each will be confirmed, qualified or withdrawn once @tab-results and @tab-ablation-results are filled.
 
-We presented MRI-to-Motion (M2M), a reference architecture that joins individual-muscle MRI, subject-specific musculoskeletal capacity, monocular video biomechanics and capacity-conditioned forecasting, and reports every output as a clinical endpoint with uncertainty. We expect the study to support five conclusions.
+We presented MRI-to-Motion (M2M), a reference architecture that joins individual-muscle MRI, subject-specific musculoskeletal capacity and two-camera video biomechanics, proposes capacity-conditioned forecasting, and reports every output as a clinical endpoint with uncertainty. We expect the study to support five conclusions.
 
-+ *MRI capacity makes video analysis clinically usable.* Conditioning on MRI-derived geometry and capacity should reduce monocular kinematic error (A1) and bring gait-speed limits of agreement inside the ±0.10 m/s substantial MCID, which generic video-only pipelines (B2, B3) are not expected to reach in sarcopenic patients.
++ *MRI capacity makes video analysis clinically usable.* Conditioning on MRI-derived geometry and capacity should reduce kinematic error (A1) and bring gait-speed limits of agreement inside the ±0.10 m/s substantial MCID, which generic video-only pipelines (B2, B3) are not expected to reach in sarcopenic patients.
 + *Muscle quality, not only quantity, explains weakness.* Removing the fat-fraction term (A2) should degrade torque prediction and endpoint agreement most in patients with high IMAT, consistent with evidence that thigh IMAT relates to mobility independently of lean mass [10].
 + *The pipeline outperforms observation by eye.* M2M should exceed the inter-rater reliability of clinician observational rating (B1) and reach ICC ≥ 0.90 for timed endpoints, making longitudinal tracking at the MCID scale feasible.
-+ *Capacity conditioning improves forecasting.* A capacity-conditioned forecaster should reduce 12-month functional forecast error relative to a motion-only forecaster (B5, A4), and its counterfactual mode should give dietitians and physiotherapists a quantitative target for intervention.
-+ *A shared, standards-aligned record serves all stakeholders.* Mapping outputs to AWGS 2019, SPPB and MCID, with an explicit indeterminate class and clinician review, should let physicians, therapists, radiologists, dietitians and patients act on the same evidence while meeting TRIPOD+AI and DECIDE-AI reporting.
++ *Capacity conditioning improves forecasting.* Once M6 is built, a capacity-conditioned forecaster should reduce 12-month functional forecast error relative to a motion-only forecaster (B5, A4), and its counterfactual mode should give dietitians and physiotherapists a quantitative target for intervention.
++ *A shared, standards-aligned record serves all stakeholders.* Mapping outputs to AWGS 2025, SPPB and MCID, with an explicit indeterminate class and clinician review, should let physicians, therapists, radiologists, dietitians and patients act on the same evidence while meeting TRIPOD+AI and DECIDE-AI reporting.
 
-*Limitations.* MRI cost and access restrict M2M to referral settings; a reduced variant that infers capacity from video and anthropometrics alone is a planned extension. Muscle force is validated only indirectly, through joint torque and EMG timing. Cohorts are drawn from one Thai centre, so external validation in other populations is required before deployment.
+*Limitations.* MRI cost and access restrict M2M to referral settings; a reduced variant that infers capacity from video and anthropometrics alone is a planned extension. Muscle force is validated only indirectly, through joint torque and EMG timing; a physically plausible simulation does not guarantee correct muscle force. Two phones need a shared clock, since one frame of drift is 33 ms at 30 fps, and the monocular mode is less accurate than the two-camera rig. Cohorts are drawn from one Thai centre, so external validation in other populations is required before deployment.
 
 *Future work.* Multi-centre validation, a home re-test mode using the patient's stored capacity model, and a prospective DECIDE-AI study measuring whether M2M changes clinical decisions and patient outcomes.
 
@@ -321,7 +323,7 @@ We presented MRI-to-Motion (M2M), a reference architecture that joins individual
 #set text(size: 9.5pt)
 #set enum(numbering: "[1]")
 + A. J. Cruz-Jentoft et al., "Sarcopenia: revised European consensus on definition and diagnosis," _Age and Ageing_, vol. 48, no. 1, pp. 16--31, 2019, doi: 10.1093/ageing/afy169.
-+ L.-K. Chen et al., "Asian Working Group for Sarcopenia: 2019 consensus update on sarcopenia diagnosis and treatment," _J. Am. Med. Dir. Assoc._, vol. 21, no. 3, pp. 300--307.e2, 2020, doi: 10.1016/j.jamda.2019.12.012.
++ L.-K. Chen et al., "A focus shift from sarcopenia to muscle health in the AWGS 2025 consensus update," _Nature Aging_, vol. 5, no. 11, pp. 2164--2175, 2025.
 + National Statistical Office of Thailand, "The 2024 Survey of the Older Persons in Thailand," Bangkok, 2024; summarised in _Japan Labor Issues_, vol. 9, no. 55, 2025.
 + D. Matsuzaka, K. Wagatsuma, T. Shimada, K. Ikushima, and H. Fujisawa, "Reliability and validity of observational gait analysis by physical therapists," _Phys. Ther. Res._, vol. 28, no. 2, pp. 129--136, 2025.
 + S. Perera, S. H. Mody, R. C. Woodman, and S. A. Studenski, "Meaningful change and responsiveness in common physical performance measures in older adults," _J. Am. Geriatr. Soc._, vol. 54, no. 5, pp. 743--749, 2006, doi: 10.1111/j.1532-5415.2006.00701.x.
@@ -372,3 +374,4 @@ We presented MRI-to-Motion (M2M), a reference architecture that joins individual
 + L. B. Mokkink et al., "The COSMIN checklist for assessing the methodological quality of studies on measurement properties of health status measurement instruments," _Qual. Life Res._, vol. 19, pp. 539--549, 2010.
 + L. Pagnon, M. Domalain, and L. Reveret, "Pose2Sim: an open-source Python package for multiview markerless kinematics," _J. Open Source Softw._, vol. 7, no. 77, 4362, 2022.
 + T. Xiang, T. Tan, N. Schuetz, S. Delp, L. Fei-Fei, and E. Adeli, "HumanScore: benchmarking human motions in generated videos," arXiv:2604.20157, 2026.
++ T. Jiang et al., "RTMPose: real-time multi-person pose estimation based on MMPose," arXiv:2303.07399, 2023.

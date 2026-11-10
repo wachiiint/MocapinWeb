@@ -194,6 +194,7 @@ flowchart LR
 | 0 | **Light pose model**, on device (see Open decisions) | Camera stream | Keypoints on device → pass / warning. Not stored |
 | 1 | **RTMPose** (fine-tuned, HALPE_26: body + feet) | Video frames, per camera | 26 2D keypoints + confidence per frame |
 | 2 | **Pose2Sim triangulation** + Butterworth filter | 2D keypoints ×2, calibration, synced frames | 3D keypoints `.trc` |
+| 1–2 (1 cam) | **WHAM / SMPL** monocular 3D | Video frames, one camera | 3D joints → step 3 |
 | 3 | **Marker augmenter** (OpenCap LSTM, built into Pose2Sim) | ~20 3D keypoints, height, weight | ~43 anatomical markers `.trc` |
 | 4 | **Lai-Uhlrich model** + OpenSim Scale tool | Generic `.osim`, markers, height + weight or MRI bone lengths | Scaled `.osim` |
 | 5 | **OpenSim IK** | Scaled `.osim`, markers `.trc` | Joint angles `.mot` |
@@ -230,11 +231,7 @@ $$F^{\max}_m = \sigma_0 \cdot \frac{V_m \cos\theta_m}{L^{\mathrm{opt}}_m} \cdot 
 - **MRI ≠ OpenSim:** one MRI muscle label may map to several OpenSim muscles; MRI is scanned supine and must be registered to OpenSim body frames.
 - **GRF sim is slow** (minutes per trial). Built and tested first in `research/`, then moved into `pose-engine/`.
 - **Plausible motion ≠ correct muscle force:** DCR is validated against dynamometer torque and EMG timing, not by eye.
-
-### Open decisions
-
-- **1-camera recordings** \
-    Pipeline needs 2 cameras. Monocular 3D (the paper's home mode), or not supported?
+- **1 camera = monocular, lower accuracy.** WHAM / SMPL replaces steps 1–2, then the same chain to DCR. Results flagged lower accuracy.
 
 ## User workflow
 [Anti-Slop: 50% - @wachi - About to change after paper submission]
