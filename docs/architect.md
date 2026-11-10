@@ -112,6 +112,7 @@ Pipeline depends on camera count, not location.
 │   ├── clinical-rules.md       # Clinical guardrails
 │   └── wireframes/             # Standalone POC screens & UI rules (see docs/wireframes/AGENTS.md)
 ├── research/                   # Offline Pose2Sim & OpenSim experiments (never imported by backend)
+├── paper/                      # Project paper (Typst source)
 ├── frontend/                   # React + TypeScript + Vite + Tailwind (shadcn/ui)
 │   └── src/
 │       ├── components/ui/      # Reusable shadcn/ui primitives
@@ -143,77 +144,97 @@ Pipeline depends on camera count, not location.
 | `pose-engine/` | Pose estimation, 3D kinematics, raw metrics | Touch PostgreSQL, clinical judgement |
 
 ## Data pipeline
-[Anti-Slop Indicator: 90% - HEAVY review by Wachi, can change later but contact me first]
-
-Runs inside the Pose Engine worker, one job per recording.
+[Anti-Slop: 60% - @wachi - just change model]
 
 Toggle Pan mode to drag and view entire flow
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
-    subgraph BR["Browser"]
-        PRE{"Live check before start<br/>lighting, framing,<br/>extra person"} -- fail --> PRE
-        PRE -- pass --> CAM["Record 1 or 2+ cameras<br/>live warnings during record"]
+    subgraph LIVE["Patient's device"]
+        PRE{"Keypoint guard<br/>lighting, framing,<br/>one person"} -- fail --> PRE
+        PRE -- pass --> CAM["Record 2 cameras<br/>guard keeps warning"]
         CAM --> UP["Upload via<br/>presigned URL"]
     end
 
+    MRIT(["MRI team"])
     API["Go API"]
     OBJ[("Object storage")]
     JQ[["Redis<br/>job queue"]]
 
     UP -- video --> OBJ
+    MRIT -. "manifest JSON<br/>(optional)" .-> OBJ
     UP -- "upload done" --> API
-    API -- "check file, push job:<br/>id, video keys, calibration key,<br/>height, weight" --> JQ
-    JQ --> D
+    API -- "check file, push job:<br/>id, video keys, calibration key,<br/>manifest key, height, weight" --> JQ
+    JQ --> S
 
     subgraph WK["Pose Engine worker"]
-        D{"Camera count"}
-        D -- 1 --> K1["RTMPose 2D<br/>HALPE_26"] --> F1["Filter"] --> M1["Metrics<br/>reps, timing, 2D angles"]
-        D -- "2+" --> S["Sync<br/>recording timestamps"] --> K2["RTMPose 2D<br/>per camera"]
-        K2 --> T["Triangulate 3D<br/>Pose2Sim + calibration"] --> F2["Filter"]
-        F2 --> IK["OpenSim<br/>scale + inverse kinematics"] --> M2["Metrics<br/>joint angles, ROM, compensation"]
+        S["Sync"] --> K["RTMPose 2D<br/>per camera"] --> T["Triangulate + filter<br/>Pose2Sim"]
+        T --> AUG["Marker augmentation<br/>LSTM"] --> SC["Scale Lai-Uhlrich<br/>height/weight or MRI bones"]
+        SC --> IK["Inverse kinematics"]
+        SC --> FM["Set Fmax<br/>from MRI"]
+        IK --> GRF["GRF<br/>contact-sphere tracking sim"]
+        FM --> GRF
+        GRF --> MF["Muscle forces"] --> DCR["DCR per muscle"]
+        IK --> MET["Metrics"]
+        DCR --> MET
     end
 
-    OBJ -. "download videos" .-> D
-    WK -. "upload keypoints, .trc, .mot, overlay" .-> OBJ
-    M1 --> RQ[["Redis<br/>result queue"]]
-    M2 --> RQ
+    OBJ -. "videos, calibration, manifest" .-> S
+    WK -. "upload .trc, .osim, .mot,<br/>muscle outputs, overlay" .-> OBJ
+    MET --> RQ[["Redis<br/>result queue"]]
     RQ --> API
     API -- "clinical scoring" --> DB[("PostgreSQL")]
 ```
 
-### Stages
+[Anti-Slop: 70% - @wachi - probably, LGTM]
+### Models (input → output)
 
-| Stage | Tool | Output |
-|---|---|---|
-| Pose estimation | RTMPose (fine-tuned), HALPE_26: body + feet | 2D keypoints per frame |
-| Sync (2+ cams) | Recording timestamps | Aligned frames |
-| Triangulation (2+ cams) | Pose2Sim + camera calibration | 3D keypoints `.trc` |
-| Filter | Butterworth low-pass (removes jitter) | Smooth keypoints |
-| Inverse kinematics (2+ cams) | OpenSim, Pose2Sim bundled model, scaled by patient height + weight | Joint angles `.mot` |
-| Metrics | Python (numpy/scipy) | Raw numbers only: reps, times, 2D/3D joint angles, ROM, compensation flags. No clinical judgement |
+| Step | Model / tool | Input | Output |
+|---|---|---|---|
+| 0 | **Light pose model**, on device (see Open decisions) | Camera stream | Keypoints on device → pass / warning. Not stored |
+| 1 | **RTMPose** (fine-tuned, HALPE_26: body + feet) | Video frames, per camera | 26 2D keypoints + confidence per frame |
+| 2 | **Pose2Sim triangulation** + Butterworth filter | 2D keypoints ×2, calibration, synced frames | 3D keypoints `.trc` |
+| 1–2 (1 cam) | **WHAM / SMPL** monocular 3D | Video frames, one camera | 3D joints → step 3 |
+| 3 | **Marker augmenter** (OpenCap LSTM, built into Pose2Sim) | ~20 3D keypoints, height, weight | ~43 anatomical markers `.trc` |
+| 4 | **Lai-Uhlrich model** + OpenSim Scale tool | Generic `.osim`, markers, height + weight or MRI bone lengths | Scaled `.osim` |
+| 5 | **OpenSim IK** | Scaled `.osim`, markers `.trc` | Joint angles `.mot` |
+| 6 | **Fmax script** | Scaled `.osim`, MRI manifest (skipped if none) | `.osim` with personal muscle strength |
+| 7 | **GRF tracking sim** (`opencap-processing`, contact spheres) | `.mot`, personal `.osim` | Ground reaction force + muscle forces |
+| 8 | **DCR script** | Muscle forces, Fmax | Demand-to-capacity ratio per muscle; near 1 = limiting muscle |
+| 9 | **Metrics** (numpy/scipy) | `.mot`, DCR | Reps, times, joint angles, ROM, compensation flags, peak DCR. No clinical judgement |
 
-### Storage layout (per recording)
+Fmax (step 6), $\sigma_0 \approx 60$ N/cm², $\theta$ = pennation angle from literature:
 
-```text
-calibration/{camera or setup id}/   # lens + camera-space calibration, referenced by recordings
-recordings/{id}/
-├── raw/          # cam1.mp4, cam2.mp4
-├── keypoints/    # 2D keypoints per camera
-├── pose3d/       # .trc (2+ cams)
-├── kinematics/   # .mot joint angles (2+ cams)
-└── overlay.mp4   # skeleton replay video
-```
+$$F^{\max}_m = \sigma_0 \cdot \frac{V_m \cos\theta_m}{L^{\mathrm{opt}}_m} \cdot (1 - \mathrm{FF}_m)$$
+
+### Data storage
+[Anti-Slop: 30% - @wachi - dont know whether this is true]
+| Data | Written by | Stored at | Read by |
+|---|---|---|---|
+| Live keypoints | Device | Not stored | — |
+| Raw video | Browser | `recordings/{id}/raw/` | Worker; doctor replay |
+| Calibration | Camera rig setup (GAn) | `calibration/{rig id}/` | Worker |
+| MRI manifest | MRI team | `mri/{patient id}/manifest.json` | Worker (steps 4, 6) |
+| 2D keypoints | Worker | `recordings/{id}/keypoints/` | Debug only |
+| 3D + augmented markers `.trc` | Worker | `recordings/{id}/pose3d/` | Step 5 |
+| Scaled + personal `.osim` | Worker | `recordings/{id}/model/` | Doctor 3D view |
+| Joint angles `.mot` | Worker | `recordings/{id}/kinematics/` | Doctor 3D view + graphs |
+| GRF, muscle forces, DCR | Worker | `recordings/{id}/muscle/` | Doctor muscle view |
+| Overlay video | Worker | `recordings/{id}/overlay.mp4` | Doctor replay |
+| Metrics + peak DCR | Worker → result queue → API | PostgreSQL | Patient result; doctor progress view |
 
 ### Constraints
 
 - **Timestamp sync needs one shared clock.** \
     for 2 separate phones drift (1 frame = 33 ms at 30 fps) need careful design + maybe 1 tap record. Leave it to Dobby and GAn for frontend & camera
-- **Job payload adds patient height + weight** for OpenSim scaling.
-- **Muscle model** (gait2392 + MRI muscle data) is a later phase, after joint angles are validated.
+- **MRI manifest is optional.** Without it: scale by height + weight, generic Fmax.
+- **MRI ≠ OpenSim:** one MRI muscle label may map to several OpenSim muscles; MRI is scanned supine and must be registered to OpenSim body frames.
+- **GRF sim is slow** (minutes per trial). Built and tested first in `research/`, then moved into `pose-engine/`.
+- **Plausible motion ≠ correct muscle force:** DCR is validated against dynamometer torque and EMG timing, not by eye.
+- **1 camera = monocular, lower accuracy.** WHAM / SMPL replaces steps 1–2, then the same chain to DCR. Results flagged lower accuracy.
 
 ## User workflow
-[Anti-Slop: 70% - @wachi - About to change by my beautiful diagram]
+[Anti-Slop: 50% - @wachi - About to change after paper submission]
 Toggle Pan mode to drag and view entire flow
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false}}}%%

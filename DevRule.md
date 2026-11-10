@@ -1,5 +1,5 @@
 # Dev Rule
-
+[Anti-Slop: 100% - @wachi - กูเขียนเอง]
 A rule to obey for development this project <span style="color:red">(PLEASE READ)</span>
 
 ## Ground rule
