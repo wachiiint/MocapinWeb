@@ -1,8 +1,16 @@
 # Realtime RTMPose camera demo
 
+The app now supports signup and requires login before opening the camera. New
+members use their phone number as the username; existing test usernames still work.
+The login and signup layouts follow the patient auth wireframe. For PostgreSQL, account
+creation/reset, Go API and Cloudflare Quick Tunnel setup, follow
+[the login development guide](../backend/api/README.md). The Vite commands below
+remain useful for frontend development; authenticated end-to-end testing uses
+the built frontend served by Go as described in that guide.
+
 The page opens a webcam and draws actual HALPE26 keypoints from RTMDet-Nano + RTMPose-s. Inference runs in a Web Worker using Auto (WebGPU with WASM fallback) or explicit WASM. Nothing is uploaded. After the experimental checks pass, the user can explicitly record camera video and download it together with a local quality report.
 
-## Run locally
+## Frontend development
 
 Use Node 24 and npm. From the repository root:
 
@@ -15,7 +23,13 @@ npm run dev
 
 On Linux, replace `npm run prepare:models` with `./prepare-models.sh` (needs `curl`, `unzip`, `sha256sum`).
 
-Open the local URL printed by Vite in Chrome. Wait for the default models to load, click **Start Camera**, and allow camera access. **Stop Camera** releases the stream. Select another camera while stopped. **Mirror preview** flips the image and skeleton together without changing source coordinates.
+Use the local URL printed by Vite for frontend layout development. To test login,
+camera access and recording, build the frontend and run it through Go and
+Cloudflare Tunnel using [the login development guide](../backend/api/README.md).
+In the authenticated app, prepare the models, click **เปิดกล้อง**, and allow camera
+access. **ปิดกล้อง** releases the stream. Select another camera while stopped.
+The front-camera preview and skeleton are mirrored together without changing
+source coordinates.
 
 **Test Still Image** runs the same detector and pose pipeline on a local JPEG or PNG without opening a webcam. Use **Clear Image** to reset it. This selects an image, never a model file.
 
@@ -23,7 +37,8 @@ The page reports people detected, clear keypoints out of 26, camera frame rate, 
 
 ## Auto and WASM
 
-For Android testing over Wi-Fi, use the HTTPS setup below; `npm run dev -- --host` alone serves HTTP and does not enable camera access from a LAN IP.
+For Android and iPhone testing, use the Cloudflare Tunnel HTTPS URL described
+under [Mobile testing through Cloudflare Tunnel](#mobile-testing-through-cloudflare-tunnel).
 
 **Auto** is the default. It requests an actual WebGPU adapter inside the worker, without browser-name detection. If unavailable, it loads WASM directly. When available, each model requests WebGPU with WASM operators allowed. The Debug labels deliberately say **WebGPU requested · WASM ops possible**, not that every operation runs on GPU. This follows the [ONNX Runtime WebGPU setup](https://onnxruntime.ai/docs/tutorials/web/ep-webgpu.html).
 
@@ -215,54 +230,45 @@ Browser verification used the [official MMDeploy sample image](https://github.co
 
 The Auto/WASM change also passed synthetic camera recovery and retry-loop checks, plus production-preview initialization in both modes and actual still-image inference on WASM. See the [2026-11-07 performance report](../docs/runtime-performance-2026-11-07.md) for two continuous five-minute worker runs and their limits. Earlier exploratory camera rates used a different test context and are not directly comparable. Physical-camera, Android, and iPhone acceptance tests are still pending.
 
-## Android camera over Wi-Fi: HTTPS development
+## Mobile testing through Cloudflare Tunnel
 
-Vite now supports an explicit HTTPS mode using its built-in [server.https option](https://vite.dev/config/server-options#server-https), without an additional npm package. It does not change normal `npm run dev` or production builds. A phone opening `http://YOUR_PC_IP:5173` is not using localhost and normally cannot access the camera; use a trusted HTTPS origin instead ([camera security requirements](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#privacy_and_security)).
+Follow [the login development guide](../backend/api/README.md) to start
+PostgreSQL, build the frontend, configure `APP_PUBLIC_ORIGIN`, and run Go with
+Cloudflare Quick Tunnel. Go serves the built frontend, authentication endpoints
+and camera WebSocket on `127.0.0.1:8080` behind the tunnel.
 
-### Prepare once on the development computer
+Open the tunnel's HTTPS URL on each phone and log in. Cloudflare provides the
+public HTTPS connection. Both phones use the same origin for login and pairing.
+Keep the computer, database, Go server and tunnel running during testing.
 
-This machine already has OpenSSL 3 available. On another machine, `openssl version` must work first; no tools or trust stores are automatically installed by this project. Use an existing OpenSSL 3 installation or obtain one through your team's approved setup process.
+After frontend changes, rebuild and restart Go. If a Quick Tunnel restart changes
+the URL, update `APP_PUBLIC_ORIGIN`, restart Go and log in at the new URL.
 
-From `frontend`, identify the Wi-Fi IPv4 address (`ipconfig` on Windows), then run:
+## Two-camera pairing
 
-```powershell
-npm run prepare:https -- -Address 192.168.1.10
-```
+Login with the same account on both phones, select **2 กล้อง**, then create a
+pairing code on one and enter it on the other. The page shows each phone's role
+and the other connection's status. No remote live video is sent. Pairing restores
+after network loss and page reload within the same tab; the saved membership is
+scoped by account. Use separate phones or independent new tabs, not duplicated
+paired tabs that may copy session storage. Keep both pages in the foreground.
 
-Replace the example address with the computer's current Wi-Fi IPv4 address. The helper creates a local development CA if none exists, a 30-day server certificate containing that IP plus localhost/127.0.0.1, and a matching private key. It verifies the signed certificate before reporting success. Existing CA files are reused so a server-certificate renewal/IP change does not require reinstalling an unchanged CA on the phone. A missing half of the CA pair or a CA with less than 30 days remaining stops preparation instead of silently replacing the trusted CA. No Windows or Android trust store is changed.
-
-Generated files in `frontend` are ignored by Git:
-
-- `dev-https-ca.local.crt`: public CA certificate; this is the only file to transfer to the test phone.
-- `dev-https-ca-key.local.pem`: private CA key; keep on the development computer.
-- `dev-https.local.pem` and `dev-https-key.local.pem`: server certificate/private key; keep on the development computer.
-- `dev-https-ca.local.srl`: local signing serial state.
-
-Do not place certificates or keys in `public`, including its subdirectories. Vite's existing default file-deny rules block certificate/key downloads from the project root; HTTPS mode also rejects custom certificate/key paths inside `public`. The CA file must be transferred separately, not exposed by adding an unauthenticated private-key download route.
-
-### Install the public CA on the Android test phone
-
-Transfer **only** `dev-https-ca.local.crt` to the phone using your normal file-transfer method. On the phone, open Settings and search for **Install a certificate** or **CA certificate**. A common path is **Security & privacy → More security settings → Encryption & credentials → Install a certificate → CA certificate**. Manufacturer/Android versions may use different labels. Select the CA certificate category for website trust, rather than a Wi-Fi client credential. The device may require its screen-lock PIN and confirmation. This trusts the local development CA on that test device; use your own test device or obtain the device owner's approval. Managed phones may prohibit user-installed CAs.
-
-Close/reopen Chrome after installation. This manual trust step is required; changing the Vite URL to HTTPS by itself does not make the new CA trusted. A privacy/certificate warning is not successful setup. Check the IP and CA installation rather than bypassing the warning. To remove this development trust after testing, remove the specific Mocapin CA through the device's user credentials/trusted credentials settings; do not clear unrelated credentials.
-
-### Start and open the HTTPS app
-
-```powershell
-npm run dev:https -- --host
-```
-
-Open `https://YOUR_PC_IP:5173` in Android Chrome, allow the camera and test. Keep the computer and phone on the same Wi-Fi. HTTPS mode uses strict ports: if the existing HTTP server is already using 5173, stop that terminal with Ctrl+C or run both servers on separate ports:
-
-```powershell
-npm run dev:https -- --host --port 5174
-```
-
-Then open `https://YOUR_PC_IP:5174`. Include **https://**, not http://. If Windows asks about Node network access, allow the intended private development network only. Guest Wi-Fi or client isolation can prevent communication even on the same SSID. The server must remain running; models, inference and recording execute on the phone.
-
-HTTPS mode defaults to `dev-https.local.pem` and `dev-https-key.local.pem`. For custom locations, copy [.env.example](.env.example) to `.env.https.local` and set `DEV_HTTPS_CERT`/`DEV_HTTPS_KEY` to relative-to-frontend or absolute paths. These server-only settings do not use a `VITE_` prefix. Missing, invalid or mismatched files fail startup with guidance instead of falling back to HTTP. Restart Vite after certificate/path changes. If the Wi-Fi IP changes, rerun preparation for the new address, then restart the server. A browser on the development computer also needs to trust the public CA if you want to use its HTTPS page there; the helper does not install that trust automatically.
-
-Verification here used a Node HTTPS client that explicitly trusted the generated CA: the application route and model HEAD request succeeded, the Wi-Fi IP matched the server certificate, and direct key/environment-file requests were denied. Missing certificates, invalid/mismatched keys and paths inside `public` failed startup as expected. Normal HTTP development configuration and production build still worked. Physical Android certificate installation and camera use must be confirmed on the phone; they cannot be certified by these server tests.
+Dual mode automatically starts a coordinated five-second countdown when both
+cameras pass their fresh readiness gates. Both devices confirm preparation first.
+The pairing panel announces
+when the other camera passes its readiness gate and when both cameras are ready.
+Readiness is withdrawn on failed checks, hidden pages, camera loss or stale
+reports; a successful connection alone does not mean a camera is ready. A failed
+check during countdown cancels it; press **เริ่มนับใหม่** on the primary after
+both recover. Stop on either phone stops its own recorder and requests remote
+stop; network loss keeps local recording alive until it can be stopped locally.
+Download video, quality JSON and timing JSON on each phone. Both devices must
+clear their results before a new automatic round. Single mode retains its
+five-second automatic recording. Leave the pair before changing
+camera count. Full protocol and backend requirements are in
+[CAMERA_PROTOCOL.md](../backend/api/CAMERA_PROTOCOL.md). Build frontend and restart
+Go after updating. Browser memory still holds existing recorded videos; download
+them before refreshing or closing the page.
 
 ## Windows cache permissions
 

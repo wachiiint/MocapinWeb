@@ -1,0 +1,209 @@
+import { useEffect, useRef, useState } from 'react'
+import { Camera, CameraOff, Check, Download, LoaderCircle, SwitchCamera, TriangleAlert } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { usePoseCamera } from '@/pose-check/usePoseCamera'
+import { drawOverlay } from '@/pose-check/draw-overlay'
+import { DEFAULT_MODELS, KEYPOINT_NAMES } from '@/pose-check/halpe26'
+import { hasCachedModels } from '@/pose-check/model-cache'
+import { RuntimeDebug } from '@/pose-check/RuntimeDebug'
+import { QUALITY_CONFIG } from '@/pose-check/quality-config'
+import { QualityDebug } from '@/pose-check/QualityDebug'
+import { useQualityGate } from '@/pose-check/useQualityGate'
+import { REASONS } from '@/pose-check/quality-checks'
+import { QUALITY_ADVICE } from '@/pose-check/quality-advice'
+import { useVideoRecording } from '@/pose-check/useVideoRecording'
+import { RecordingControls } from '@/pose-check/RecordingControls'
+import { QualityChecklist } from '@/pose-check/QualityChecklist'
+import { CameraPairingPanel } from '@/pages/patient/CameraPairingPanel'
+import { useCameraPairing } from '@/pages/patient/useCameraPairing'
+import { readCameraLease } from '@/lib/camera-protocol'
+
+function CameraPage({ accountId, canRecord, onBusyChange }: { accountId: string | null; canRecord: boolean; onBusyChange(busy: boolean): void }) {
+  const [dual, setDual] = useState(() => {
+    try { return accountId !== null && readCameraLease(sessionStorage.getItem(`mocapin-camera-${accountId}`)) !== null }
+    catch { return false }
+  })
+  const [modelsRequested, setModelsRequested] = useState(false)
+  const [checkingCache, setCheckingCache] = useState(true)
+  const { videoRef, ...camera } = usePoseCamera(modelsRequested)
+  const overlay = useRef<HTMLCanvasElement>(null)
+  const [device, setDevice] = useState('')
+  const [config, setConfig] = useState({ ...QUALITY_CONFIG })
+  const { frame, mode, models, error } = camera
+  const active = mode === 'camera' || mode === 'starting'
+  const gate = useQualityGate({ mode, models, error, frame, config, cameraFrameAt: camera.cameraFrameAt })
+  const recording = useVideoRecording({ getStream: camera.getStream, frame, models,
+    checkNow: gate.checkNow, config, cameraActive: mode === 'camera', canRecord, autoStart: !dual })
+  const recordingBusy = recording.state !== 'idle'
+  const pairing = useCameraPairing(accountId, dual && canRecord, () =>
+    canRecord && typeof MediaRecorder !== 'undefined' && mode === 'camera' && models === 'ready' && !error && !recordingBusy && !recording.result &&
+    gate.checkNow(performance.now()).canStartRecording && document.visibilityState === 'visible' &&
+    (camera.getStream()?.getVideoTracks().some((track) => track.readyState === 'live') ?? false), {
+      start: recording.start, stop: (cancelled) => recording.stop(cancelled ? 'camera-stopped' : 'user-stopped'),
+      readState: () => ({ state: recording.result ? 'finished' : recording.state, takeId: recording.activeTakeId,
+        complete: !!recording.result?.videoUrl && recording.result.report.stopReason === 'user-stopped' }),
+    })
+  const countdownSeconds = dual ? pairing.countdownSeconds ?? null : recording.countdownSeconds
+  const preparingPair = dual && (pairing.room?.take?.phase === 'preparing' || pairing.room?.take?.phase === 'countdown')
+  useEffect(() => { onBusyChange(preparingPair || recordingBusy || recording.result !== null) }, [preparingPair, recordingBusy, recording.result, onBusyChange])
+  const advice = recording.result ? 'ดาวน์โหลดวิดีโอก่อนล้างเพื่ออัดใหม่' : recording.error ? 'ตรวจกล้องแล้วกดลองใหม่' :
+    models === 'recovering' ? 'กำลังกู้คืนระบบตรวจ กรุณารอสักครู่' : models !== 'ready' ? 'กรุณารอให้ระบบพร้อม' :
+    mode === 'off' ? 'เมื่อพร้อม ระบบจะนับถอยหลังแล้วอัดให้อัตโนมัติ' :
+    error ? 'ตรวจการเชื่อมต่อกล้อง แล้วเปิดกล้องอีกครั้ง' :
+    gate.primaryReason ? QUALITY_ADVICE[gate.primaryReason.reason] :
+    mode === 'image' ? 'ภาพตัวอย่างไม่เริ่มอัดวิดีโอ กรุณาเปิดกล้อง' : 'อยู่ในตำแหน่งนี้ ให้เห็นทั้งตัวและเท้าทั้งสองข้าง'
+  const threshold = config.keypointScore
+  const overlayFrame = gate.showOverlay ? frame : null
+  const mirrored = mode === 'camera' && camera.cameraFacing === 'user'
+  const preparing = checkingCache || (modelsRequested && (models === 'loading' || models === 'recovering'))
+  const StatusIcon = preparing ? LoaderCircle : !modelsRequested ? Download : models === 'ready' ? Check : TriangleAlert
+  const modelStatus = checkingCache ? 'กำลังตรวจไฟล์…' : !modelsRequested ? 'รอดาวน์โหลด' : models === 'recovering' ? 'กำลังกู้คืนระบบ…' :
+    models === 'loading' ? 'กำลังเตรียมระบบ…' : models === 'ready' ? 'พร้อมใช้งาน' : 'เตรียมระบบไม่สำเร็จ'
+  const cameraTitle = mode === 'image' ? 'ภาพตัวอย่าง' : !dual ? 'กล้องหลัก' :
+    pairing.lease?.role === 'primary' ? 'กล้องหลัก (เครื่องนี้)' : pairing.lease?.role === 'secondary' ? 'กล้องที่ 2 (เครื่องนี้)' : 'กล้องเครื่องนี้'
+
+  useEffect(() => {
+    if (overlay.current) drawOverlay(overlay.current, overlayFrame, threshold)
+  }, [overlayFrame, threshold])
+
+  useEffect(() => {
+    let cancelled = false
+    const urls = Object.values(DEFAULT_MODELS).map((file) => new URL(`${import.meta.env.BASE_URL}${file}`, location.origin).href)
+    void hasCachedModels(urls).then((cached) => {
+      if (cancelled) return
+      if (cached) setModelsRequested(true)
+      setCheckingCache(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <main className="min-h-screen w-full bg-white text-slate-900">
+      <div className="mx-auto max-w-5xl space-y-6 p-5 sm:p-8 lg:py-10">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="min-w-0 flex-1 text-2xl font-bold tracking-tight sm:text-3xl">ตั้งกล้องและบันทึกวิดีโอ</h1>
+          <div className="ml-auto flex max-w-[55%] shrink-0 flex-col items-end gap-1">
+            {!checkingCache && !modelsRequested ?
+              <Button className="min-h-12 rounded-full bg-[#0B65FF] px-5 text-base text-white hover:bg-[#0052CC]" onClick={() => setModelsRequested(true)}>
+                <Download size={20} aria-hidden="true" />ดาวน์โหลด
+              </Button>
+             :
+            <p role="status" aria-live="polite" aria-atomic="true" className={`inline-flex items-center gap-2 text-base font-medium ${modelsRequested && models === 'error' ? 'text-red-700' : 'text-slate-700'}`}>
+              <StatusIcon size={20} aria-hidden="true" className={`shrink-0 ${preparing ? 'motion-safe:animate-spin' : ''}`} />
+              {modelStatus}
+            </p>}
+            {modelsRequested && models === 'error' && <Button variant="outline" className="min-h-12 rounded-full text-base" onClick={camera.retryModels}>ลองใหม่</Button>}
+          </div>
+        </div>
+        <fieldset className="space-y-3" disabled={recordingBusy || recording.result !== null || pairing.pending || pairing.lease !== null}>
+          <legend className="mb-3 text-lg font-semibold">จำนวนกล้อง</legend>
+          <div className="flex flex-wrap gap-3">
+            {[false, true].map((two) => <label key={String(two)} className="cursor-pointer">
+              <input className="peer sr-only" type="radio" name="camera-count" checked={dual === two} onChange={() => setDual(two)} />
+              <span className="flex min-h-12 items-center rounded-full border border-slate-300 bg-white px-6 text-lg font-semibold peer-checked:border-[#0B65FF] peer-checked:bg-[#0B65FF] peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#0B65FF] peer-disabled:cursor-not-allowed peer-disabled:opacity-60">{two ? '2 กล้อง' : '1 กล้อง'}</span>
+            </label>)}
+          </div>
+        </fieldset>
+        {pairing.lease && <p className="text-lg text-slate-600">เลิกจับคู่ก่อนเปลี่ยนจำนวนกล้อง</p>}
+        <div className={dual ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]' : ''}>
+        <section className="min-w-0 space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EFF5FF] text-[#0B65FF]"><Camera size={20} aria-hidden="true" /></span>
+            <h2 className="text-lg font-bold">{cameraTitle}</h2>
+          </div>
+          <QualityChecklist gate={gate} />
+          <div className="relative overflow-hidden rounded-2xl bg-slate-950">
+            <div className="relative min-h-60" style={{ transform: mirrored ? 'scaleX(-1)' : undefined }}>
+              <video ref={videoRef} autoPlay muted playsInline className={`w-full ${mode === 'camera' ? 'block' : 'hidden'}`} />
+              {camera.imageUrl && <img src={camera.imageUrl} alt="ภาพตัวอย่างสำหรับตรวจความพร้อม" className="block w-full" />}
+              {!active && mode !== 'image' && (
+                <div className="flex aspect-video flex-col items-center justify-center gap-3 px-5 text-center text-slate-300">
+                  <CameraOff size={36} strokeWidth={1.5} aria-hidden="true" /><p className="text-lg">เปิดกล้องเพื่อเริ่มตรวจความพร้อม</p>
+                </div>
+              )}
+              <canvas ref={overlay} className="pointer-events-none absolute inset-0 h-full w-full" />
+            </div>
+            {countdownSeconds !== null && <div role="status" aria-live="polite" aria-atomic="true" className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/70 p-5 text-center text-white">
+              <p className="text-lg font-semibold text-blue-200">เตรียมตัว เริ่มอัดใน</p>
+              <p className="text-7xl font-extrabold tabular-nums sm:text-8xl">{countdownSeconds}</p>
+              <p className="text-lg">วินาที</p>
+            </div>}
+            {recording.state === 'recording' && <p role="status" className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/65 px-4 py-2 text-lg font-semibold text-white">
+              <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />กำลังอัด
+            </p>}
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-0 flex-1 basis-48 space-y-1 text-lg font-medium">
+              <span>กล้อง</span>
+              <select value={device} disabled={active} onChange={(event) => setDevice(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3">
+                <option value="">กล้องเริ่มต้น</option>
+                {camera.devices.map((item, index) => <option key={item.deviceId || index} value={item.deviceId}>{item.label || `กล้อง ${index + 1}`}</option>)}
+              </select>
+            </label>
+            <Button className="min-h-12 rounded-full bg-[#0B65FF] px-6 text-lg text-white hover:bg-[#0052CC]" disabled={models !== 'ready' || active || recordingBusy} onClick={() => void camera.start(device)}>
+              <Camera size={18} />{mode === 'starting' ? 'กำลังเปิดกล้อง…' : 'เปิดกล้อง'}
+            </Button>
+            <Button className="min-h-12 rounded-full px-5 text-lg" variant="outline" disabled={mode === 'off'} onClick={() => { recording.stop('camera-stopped'); camera.stop() }}>{mode === 'image' ? 'ล้างภาพ' : 'ปิดกล้อง'}</Button>
+            <Button className="min-h-12 rounded-full px-5 text-lg" variant="outline"
+              disabled={mode !== 'camera' || models !== 'ready' || recordingBusy || camera.devices.length < 2}
+              onClick={() => { if (recordingBusy) return; setDevice(''); void camera.switchCamera() }}>
+              <SwitchCamera size={18} aria-hidden="true" />สลับกล้อง
+            </Button>
+          </div>
+          {(error || models === 'error') && <div role="alert" className="flex flex-wrap items-center gap-3 text-lg text-red-700">
+            <p className="break-words">{error || 'กล้องหรือระบบตรวจมีปัญหา'}</p>
+            {models === 'error' && <Button className="min-h-12 rounded-full text-lg" variant="outline" onClick={camera.retryModels}>ลองตรวจใหม่</Button>}
+          </div>}
+        </section>
+        {dual && <CameraPairingPanel pairing={pairing} canPair={canRecord} />}
+        </div>
+        <RecordingControls recording={recording} canStart={gate.canStartRecording} dual={dual}
+          onStop={dual ? () => { recording.stop(); pairing.stopCapture() } : undefined}
+          onClear={dual ? () => { pairing.clearCapture(); recording.clear() } : undefined}
+          canClear={!dual || !pairing.room?.take || pairing.room.take.phase === 'finished' || pairing.room.take.phase === 'cancelled'}
+          canStop={recording.state === 'recording' || preparingPair || (dual && pairing.room?.take?.phase === 'recording')} />
+        <details className="rounded-2xl border border-slate-200/80 bg-[#F6F9FF] p-5">
+          <summary className="min-h-12 cursor-pointer content-center text-lg font-semibold">Debug</summary>
+          <div className="mt-4 space-y-4">
+            <p className="text-lg text-slate-600">{advice}</p>
+            <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <h2 className="font-semibold">ทดสอบด้วยภาพ</h2>
+              <label className="block space-y-2 text-lg">
+                <span>เลือกภาพตัวอย่าง</span>
+                <input type="file" accept="image/jpeg,image/png" disabled={models !== 'ready' || active || camera.working || recordingBusy} className="block min-h-12 w-full text-sm file:mr-2 file:min-h-12 file:rounded-full file:border file:border-slate-200 file:bg-white file:px-4" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void camera.inspectImage(file) }} />
+              </label>
+            </section>
+            <p className="my-3 text-sm">{gate.status} · RTMPose-s HALPE26 · {camera.runtimeMode}</p>
+            {error && <p role="alert" className="break-words text-red-700">{error}</p>}
+            <dl className="grid grid-cols-2 gap-4">
+              <Metric label="Clear Keypoints" value={`${frame ? gate.clearCount : '—'} / 26`} />
+              <Metric label="People Detected" value={frame ? String(frame.people.length) : '—'} />
+              <Metric label="Camera FPS" value={mode === 'camera' ? camera.previewFps.toFixed(1) : '—'} />
+              <Metric label="Pose Updates / s" value={mode === 'camera' ? camera.inferenceFps.toFixed(1) : '—'} />
+              <Metric label="Inference Time" value={camera.latency ? `${camera.latency.toFixed(0)} ms` : '—'} />
+              <Metric label="Frame Size" value={frame ? `${frame.width} × ${frame.height}` : '—'} />
+            </dl>
+            {gate.issues.map((issue) => <p key={issue.reason} className="my-2 text-sm">{REASONS[issue.reason].title}: {REASONS[issue.reason].advice}</p>)}
+            <RuntimeDebug mode={camera.runtimeMode} info={camera.runtimeInfo}
+              disabled={!modelsRequested || active || camera.working || recordingBusy || models === 'loading' || models === 'recovering'}
+              onModeChange={camera.changeRuntimeMode} latest={camera.timing} statistics={camera.statistics}
+              sampleCount={camera.sampleCount} recoveryReason={camera.recoveryReason} />
+            <fieldset disabled={recordingBusy} className="min-w-0">
+              <QualityDebug config={config} onChange={setConfig} gate={gate} />
+            </fieldset>
+            <p className="mb-3 text-xs text-slate-500">Model scores are not accuracy percentages. Inference targets 10 updates/s; actual speed depends on this device.</p>
+            <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+              {KEYPOINT_NAMES.map((name, index) => <div key={name} className="flex justify-between border-b border-slate-100 py-1 text-sm"><span>{index}. {name}</span><span className="font-mono">{frame?.keypoints[index]?.score.toFixed(3) ?? '—'}</span></div>)}
+            </div>
+          </div>
+        </details>
+      </div>
+    </main>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <div><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd></div>
+}
+
+export default CameraPage

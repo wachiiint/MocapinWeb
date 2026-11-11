@@ -1,18 +1,18 @@
 import type { useVideoRecording } from './useVideoRecording'
 
-export function RecordingControls({ recording, canStart }: {
-  recording: ReturnType<typeof useVideoRecording>; canStart: boolean
+export function RecordingControls({ recording, canStart, dual = false, onStop, onClear, canClear = true, canStop }: {
+  recording: ReturnType<typeof useVideoRecording>; canStart: boolean; dual?: boolean; onStop?: () => void; onClear?: () => void; canClear?: boolean; canStop?: boolean
 }) {
   const { state, elapsedMs, result, error } = recording
   const seconds = Math.floor(elapsedMs / 1000)
   return <section className="space-y-4 rounded-2xl border border-blue-100/80 bg-[#F6F9FF] p-5">
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <p role="status" className="text-lg tabular-nums">{state === 'recording' ? 'กำลังอัด' : state === 'stopping' ? 'กำลังบันทึกวิดีโอ…' : result ? 'อัดเสร็จแล้ว' : 'รออัดอัตโนมัติ'}
+      <p role="status" className="text-lg tabular-nums">{state === 'recording' ? 'กำลังอัด' : state === 'stopping' ? 'กำลังบันทึกวิดีโอ…' : result ? 'อัดเสร็จแล้ว' : dual ? 'รอสองกล้องพร้อม' : 'รออัดอัตโนมัติ'}
         {' · '}{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</p>
-      <button type="button" disabled={state !== 'recording'} onClick={() => recording.stop()}
+      <button type="button" disabled={!(canStop ?? state === 'recording')} onClick={() => onStop ? onStop() : recording.stop()}
         className="min-h-12 rounded-full bg-[#0B65FF] px-6 text-lg font-semibold text-white hover:bg-[#0052CC] disabled:opacity-40">หยุดอัด</button>
     </div>
-    {state === 'idle' && !result && !error && !canStart && <p className="text-lg text-slate-600">ผ่านครบแล้ว เริ่มอัดอัตโนมัติใน 5 วินาที</p>}
+    {state === 'idle' && !result && !error && !canStart && <p className="text-lg text-slate-600">{dual ? 'เมื่อพร้อมทั้งสองกล้อง ระบบจะนับ 5 วินาทีแล้วเริ่มอัด' : 'ผ่านครบแล้ว เริ่มอัดอัตโนมัติใน 5 วินาที'}</p>}
     {state === 'recording' && !canStart && <p role="alert" className="text-lg text-amber-800">คุณภาพภาพมีปัญหา แต่ยังอัดต่อ</p>}
     {error && <p role="alert" className="break-words text-lg text-red-700">{error}</p>}
     {error && state === 'idle' && !result && <button type="button" onClick={recording.retry}
@@ -25,8 +25,10 @@ export function RecordingControls({ recording, canStart }: {
       <div className="flex flex-wrap gap-3 text-lg">
         {result.videoUrl && <a className="inline-flex min-h-12 items-center rounded-full border border-slate-300 px-4 py-2" href={result.videoUrl} download={`${result.filename}.${result.extension}`}>ดาวน์โหลดวิดีโอ</a>}
         <a className="inline-flex min-h-12 items-center rounded-full border border-slate-300 px-4 py-2" href={result.reportUrl} download={`${result.filename}-quality.json`}>ดาวน์โหลดรายงาน</a>
-        <button type="button" className="inline-flex min-h-12 items-center rounded-full border border-slate-300 px-4 py-2" onClick={recording.clear}>ล้างวิดีโอเพื่ออัดใหม่</button>
+        {result.timingUrl && <a className="inline-flex min-h-12 items-center rounded-full border border-slate-300 px-4 py-2" href={result.timingUrl} download={`${result.filename}-timing.json`}>ดาวน์โหลดข้อมูลเวลา</a>}
+        <button type="button" disabled={!canClear} className="inline-flex min-h-12 items-center rounded-full border border-slate-300 px-4 py-2 disabled:opacity-40" onClick={onClear ?? recording.clear}>ล้างวิดีโอเพื่ออัดใหม่</button>
       </div>
+      {!canClear && <p className="text-lg text-slate-600">รอให้อีกเครื่องหยุดและบันทึกวิดีโอเสร็จก่อนล้าง</p>}
     </>}
   </section>
 }

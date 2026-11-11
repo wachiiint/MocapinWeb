@@ -7,8 +7,6 @@
     "test": "tsc -p tsconfig.test.json --noEmit && node --test tests/pose-check/*.test.ts",
     "prepare:models": "powershell -NoProfile -File ./prepare-models.ps1",
     "dev": "vite",
-    "prepare:https": "powershell -NoProfile -File ./prepare-https.ps1",
-    "dev:https": "vite --mode https",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

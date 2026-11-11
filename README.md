@@ -2,6 +2,10 @@
 
 ## Description
 
+Login, per-device sessions and team account commands are implemented. Follow
+[the login setup guide](backend/api/README.md) to start PostgreSQL, build the
+frontend and open the application through Cloudflare Quick Tunnel.
+
 MocapinWeb is a clinical-grade elderly mobility and sarcopenia care platform. The repository currently contains architecture, clinical safeguards, and UI wireframes.
 
 The frontend includes a local realtime webcam demo with RTMPose HALPE26 overlays, person counts, model scores, and a still-image test. Default models load automatically; no model upload is needed. Video-quality and recording-readiness checks are still pending. See [frontend/README.md](frontend/README.md) for setup, model sources, and validation limits.

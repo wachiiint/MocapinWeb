@@ -9,6 +9,7 @@ type Options = {
   onTick(elapsedMs: number): void
   onComplete(video: Blob, report: RecordingQualityReport): void
   onError(message: string): void
+  onStarted?(at: number): void
   now?: () => number
 }
 
@@ -38,6 +39,7 @@ export function recordVideo(recorder: RecorderDevice, options: Options) {
     const blob = (event as BlobEvent).data
     if (blob?.size) chunks.push(blob)
   }
+  const began = () => options.onStarted?.(now())
   const error = () => {
     options.onError('Recording failed. Any available video will be kept; it may be incomplete.')
     stop('recorder-error')
@@ -60,10 +62,12 @@ export function recordVideo(recorder: RecorderDevice, options: Options) {
     recorder.removeEventListener('dataavailable', data)
     recorder.removeEventListener('error', error)
     recorder.removeEventListener('stop', complete)
+    recorder.removeEventListener('start', began)
   }
   recorder.addEventListener('dataavailable', data)
   recorder.addEventListener('error', error)
   recorder.addEventListener('stop', complete)
+  recorder.addEventListener('start', began)
   try {
     recorder.start(1000)
     sample()
