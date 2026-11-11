@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -35,7 +36,7 @@ func run() error {
 	if os.Getenv("DATABASE_URL") == "" {
 		return fmt.Errorf("DATABASE_URL is required")
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	db, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -77,10 +78,14 @@ func run() error {
 		return fmt.Errorf("build frontend first: %w", err)
 	}
 	router.Handle("/*", http.FileServer(http.Dir(directory)))
-	server := &http.Server{Addr: "127.0.0.1:8080", Handler: router, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 120 * time.Second, IdleTimeout: 60 * time.Second}
+	address := os.Getenv("APP_LISTEN_ADDR")
+	if address == "" {
+		address = "127.0.0.1:8080"
+	}
+	server := &http.Server{Addr: address, Handler: router, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 120 * time.Second, IdleTimeout: 60 * time.Second}
 	failure := make(chan error, 1)
 	go func() { failure <- server.ListenAndServe() }()
-	log.Print("Auth and frontend listening on 127.0.0.1:8080")
+	log.Printf("Auth and frontend listening on %s", address)
 	maintenance := time.NewTicker(time.Second)
 	defer maintenance.Stop()
 	for {

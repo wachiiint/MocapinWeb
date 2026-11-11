@@ -23,7 +23,7 @@ func LimitLogin(next http.Handler) http.Handler {
 			return
 		}
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-		// The listener is loopback-only; Cloudflare overwrites this header at its edge.
+		// Deployment restricts host ingress to loopback; Cloudflare overwrites this header at its edge.
 		if edge := net.ParseIP(r.Header.Get("CF-Connecting-IP")); edge != nil {
 			ip = edge.String()
 		}
