@@ -2,6 +2,7 @@
 temp
 paper/*.pdf
 research/data/
+research/target/
 
 # Dependencies
 node_modules/
