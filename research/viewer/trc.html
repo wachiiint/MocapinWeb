@@ -1,0 +1,169 @@
+<!doctype html>
+<!-- [Anti-Slop: 40% - @wachi - USE ONLY, dont care] -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRC viewer</title>
+<style>
+  :root { --bg: #fafafa; --fg: #222; --muted: #888; --grid: #ddd; --pose: #d9480f; --aug: #1971c2;
+          --x: #e03131; --y: #2f9e44; --z: #1c7ed6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #18181b; --fg: #eee; --muted: #777; --grid: #333; --pose: #ff922b; --aug: #4dabf7;
+            --x: #ff6b6b; --y: #69db7c; --z: #74c0fc; }
+  }
+  body { margin: 0; font: 14px system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  header { display: flex; gap: 12px; align-items: center; padding: 8px 16px; flex-wrap: wrap; }
+  input[type=range] { flex: 1; min-width: 120px; }
+  canvas { display: block; width: 100vw; height: calc(100vh - 48px); cursor: grab; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+  #hint { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <input type="file" id="file" accept=".trc">
+  <button id="play" disabled>▶</button>
+  <input type="range" id="frame" min="0" max="0" value="0" disabled>
+  <span id="info"></span>
+  <span><span class="dot" style="background:var(--pose)"></span> keypoint
+        <span class="dot" style="background:var(--aug)"></span> augmented</span>
+</header>
+<canvas id="view"></canvas>
+<script>
+const canvas = document.getElementById('view');
+const ctx = canvas.getContext('2d');
+const frameInput = document.getElementById('frame');
+const playButton = document.getElementById('play');
+const info = document.getElementById('info');
+
+let trc = null;          // { names, rate, frames: [[x,y,z], ...][] }
+let frame = 0, playing = false, lastTime = 0;
+let yaw = 0.6, pitch = 0.3, dragging = null;
+const STEP = 0.5;        // grid spacing, metres
+const AXIS = 0.5;        // axis arrow length, metres
+
+// TRC: 3 header lines, marker names on line 4, X/Y/Z labels on line 5, then data rows.
+// Values are converted to metres (Units column is "m" or "mm").
+function parseTrc(text) {
+  const lines = text.split(/\r?\n/);
+  const meta = lines[2].split('\t');
+  const unit = meta[4].trim() === 'mm' ? 0.001 : 1;
+  const names = lines[3].split('\t').slice(2).filter(n => n.trim());
+  const frames = lines.slice(5).filter(l => l.trim()).map(line => {
+    const v = line.split('\t').slice(2).map(s => Number(s) * unit);
+    return names.map((_, i) => [v[3 * i], v[3 * i + 1], v[3 * i + 2]]);
+  });
+  return { names, rate: Number(meta[0]), frames };
+}
+
+// Centre on the person in frame 0; zoom out until the origin is also visible.
+// Floor grid (Y = 0) covers both the person and the origin, plus 1 m margin.
+function fit(frames) {
+  const pts = frames[0].filter(p => p.every(Number.isFinite));
+  const centre = [0, 1, 2].map(k => pts.reduce((s, p) => s + p[k], 0) / pts.length);
+  const body = Math.max(...pts.map(p => Math.hypot(p[0] - centre[0], p[1] - centre[1], p[2] - centre[2])));
+  const span = Math.max(body, Math.hypot(...centre));
+  const lo = k => Math.floor((Math.min(0, centre[k]) - 1) / STEP) * STEP;
+  const hi = k => Math.ceil((Math.max(0, centre[k]) + 1) / STEP) * STEP;
+  return { centre, span, grid: { x0: lo(0), x1: hi(0), z0: lo(2), z1: hi(2) } };
+}
+
+// Orthographic view: rotate around the vertical Y axis (yaw), then tilt (pitch).
+function project([x, y, z], { centre, span }, w, h) {
+  x -= centre[0]; y -= centre[1]; z -= centre[2];
+  const x1 = x * Math.cos(yaw) - z * Math.sin(yaw);
+  const z1 = x * Math.sin(yaw) + z * Math.cos(yaw);
+  const y2 = y * Math.cos(pitch) - z1 * Math.sin(pitch);
+  const depth = y * Math.sin(pitch) + z1 * Math.cos(pitch);
+  const s = 0.45 * Math.min(w, h) / span;
+  return [w / 2 + x1 * s, h / 2 - y2 * s, depth];
+}
+
+function segment(a, b, w, h) {
+  const p = project(a, trc.view, w, h), q = project(b, trc.view, w, h);
+  ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+  return q;
+}
+
+function drawFloor(w, h, css) {
+  const { x0, x1, z0, z1 } = trc.view.grid;
+  ctx.strokeStyle = css.getPropertyValue('--grid'); ctx.lineWidth = 1;
+  for (let x = x0; x <= x1 + 1e-9; x += STEP) segment([x, 0, z0], [x, 0, z1], w, h);
+  for (let z = z0; z <= z1 + 1e-9; z += STEP) segment([x0, 0, z], [x1, 0, z], w, h);
+}
+
+function drawAxes(w, h, css) {
+  ctx.lineWidth = 2; ctx.font = '12px system-ui';
+  [[AXIS, 0, 0, 'x'], [0, AXIS, 0, 'y'], [0, 0, AXIS, 'z']].forEach(([x, y, z, k]) => {
+    ctx.strokeStyle = ctx.fillStyle = css.getPropertyValue('--' + k);
+    const [sx, sy] = segment([0, 0, 0], [x, y, z], w, h);
+    ctx.fillText(k.toUpperCase(), sx + 4, sy - 4);
+  });
+  const [ox, oy] = project([0, 0, 0], trc.view, w, h);
+  ctx.fillStyle = css.getPropertyValue('--fg'); ctx.fillText('O', ox - 14, oy + 14);
+}
+
+function draw() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * devicePixelRatio; canvas.height = h * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  if (!trc) return;
+  const css = getComputedStyle(document.documentElement);
+  drawFloor(w, h, css);
+  drawAxes(w, h, css);
+  const colour = { pose: css.getPropertyValue('--pose'), aug: css.getPropertyValue('--aug') };
+  const dots = trc.frames[frame]
+    .map((p, i) => p.every(Number.isFinite) ? [...project(p, trc.view, w, h), i] : null)
+    .filter(Boolean)
+    .sort((a, b) => a[2] - b[2]);                     // far dots first
+  for (const [sx, sy, , i] of dots) {
+    ctx.fillStyle = trc.names[i].endsWith('_study') ? colour.aug : colour.pose;
+    ctx.beginPath(); ctx.arc(sx, sy, 4, 0, 2 * Math.PI); ctx.fill();
+  }
+  info.textContent = `frame ${frame + 1}/${trc.frames.length} · ${trc.names.length} markers · ${trc.rate} Hz · grid ${STEP} m`;
+}
+
+function tick(time) {
+  if (!playing) return;
+  if (time - lastTime >= 1000 / trc.rate) {
+    frame = (frame + 1) % trc.frames.length;
+    frameInput.value = frame; lastTime = time; draw();
+  }
+  requestAnimationFrame(tick);
+}
+
+document.getElementById('file').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  trc = parseTrc(await file.text());
+  trc.view = fit(trc.frames);
+  frame = 0;
+  frameInput.max = trc.frames.length - 1; frameInput.value = 0;
+  frameInput.disabled = playButton.disabled = false;
+  draw();
+});
+
+playButton.addEventListener('click', () => {
+  playing = !playing;
+  playButton.textContent = playing ? '⏸' : '▶';
+  if (playing) requestAnimationFrame(tick);
+});
+
+frameInput.addEventListener('input', () => { frame = Number(frameInput.value); draw(); });
+
+canvas.addEventListener('pointerdown', e => { dragging = [e.clientX, e.clientY]; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointerup', () => { dragging = null; });
+canvas.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  yaw += (e.clientX - dragging[0]) * 0.01;
+  pitch = Math.max(-1.5, Math.min(1.5, pitch + (e.clientY - dragging[1]) * 0.01));
+  dragging = [e.clientX, e.clientY];
+  draw();
+});
+window.addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>

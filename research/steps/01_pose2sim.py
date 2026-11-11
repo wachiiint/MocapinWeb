@@ -3,6 +3,7 @@
 RTMPose 2D (HALPE_26) → sync → triangulate → Butterworth filter → LSTM augmenter.
 Stops before Pose2Sim's own kinematics: scaling + IK use Lai-Uhlrich in later steps.
 """
+# [Anti-Slop: 10% - @wachi - pure slop]
 import argparse
 import os
 from pathlib import Path

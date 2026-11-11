@@ -1,46 +1,55 @@
 # Research pipeline
-
+[Anti-Slop: 60% - @wachi - frustration, will append later]
 Offline Python version of the Data pipeline in [docs/architect.md](../docs/architect.md). Never imported by the backend.
 
-| Folder | Holds | In git |
-|---|---|---|
-| `steps/` | One script per step: `trial folder → output subfolder` | ✅ |
-| `models/` | `.osim` models + setup XMLs | ✅ (weights ❌) |
-| `data/` | Trials: videos, calibration, outputs | ❌ |
+Directory
+```txt
+.
+├── steps           # python script
+├── models          # model(.osim), weight, config XML, 
+└── data            # videos, output, calibrations
+```
 
-## Environments
+Environments
+```txt
+research/.venv/   # git-ignored
+├── pose            # step 1–5: Pose2Sim + OpenSim
+├── sim             # step 7: opencap-processing
+└── wham            # 1-camera path: WHAM
+```
 
-| Env | Steps | Tool |
-|---|---|---|
-| `pose` | 1–5 | Pose2Sim + OpenSim |
-| `sim` | 7 | opencap-processing |
-| `wham` | 1-camera path | WHAM |
-
-### `pose` env
-
-Pose2Sim needs Python 3.11 or later. OpenSim installs from pip with it.
-
+Installation (`research/.venv/pose`)
 ```bash
-uv venv ~/.venv/pose --python 3.12        # new env, kept outside the repo
-source ~/.venv/pose/bin/activate
+cd research
+uv venv .venv/pose --python 3.12          # new env
+source .venv/pose/bin/activate
 uv pip install pose2sim                   # pulls opensim, rtmlib (RTMPose), onnxruntime
+uv pip install onnxruntime-gpu            # [OPTIONAL] for GPU (need CUDA)
 ```
 
-Optional GPU: `uv pip install onnxruntime-gpu` (needs CUDA).
-
-### Demo trial
-
+Demo trial
 ```bash
-mkdir -p research/data/trials
-cp -r "$(python -c 'import Pose2Sim, os; print(os.path.dirname(Pose2Sim.__file__))')/Demo_SinglePerson" research/data/trials/demo
+mkdir -p data/trials
+cp -r "$(python -c 'import Pose2Sim, os; print(os.path.dirname(Pose2Sim.__file__))')/Demo_SinglePerson" data/trials/demo
 ```
 
-## Run
-
+Run
 ```bash
-python research/steps/01_pose2sim.py research/data/trials/demo --height 1.72 --mass 70
+python steps/01_pose2sim.py data/trials/demo --height 1.72 --mass 70
+# output: data/trials/demo/pose-3d/*_LSTM.trc   (augmented markers)
 ```
 
-| Step | Output in trial folder |
-|---|---|
-| `01_pose2sim.py` | `pose-3d/*_LSTM.trc`: augmented markers |
+[Anti-Slop: 20% - @wachi - didnt try]
+Visualization
+```txt
+data/trials/demo/
+├── pose/cam0X_pose.mp4             # 2D: video + RTMPose skeleton, open in any player
+├── pose-3d/filtering_plots_ik/     # 3D: x/y/z per keypoint, before vs after filter
+└── logs.txt                        # numbers: reprojection error, excluded cameras per keypoint
+```
+```bash
+xdg-open viewer/trc.html            # 3D .trc: pick pose-3d/*_LSTM.trc, drag = rotate, ▶ = play
+                                    # orange = keypoint, blue = augmented, grid = floor (Y = 0), 0.5 m
+```
+
+How Pose2Sim calibrates, syncs, triangulates: [notes/pose2sim-triangulation.md](notes/pose2sim-triangulation.md)
