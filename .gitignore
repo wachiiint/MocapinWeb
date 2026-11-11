@@ -1,6 +1,7 @@
-# Project - Developer
+# Project 
 temp
 paper/*.pdf
+research/data/
 
 # Dependencies
 node_modules/
@@ -28,6 +29,8 @@ bin/
 *.pth
 *.pt
 *.c3d
+*.ckpt
+*.pkl
 
 # IDE & OS
 .vscode/
