@@ -39,7 +39,7 @@ const info = document.getElementById('info');
 
 let trc = null;          // { names, rate, frames: [[x,y,z], ...][] }
 let frame = 0, playing = false, lastTime = 0;
-let yaw = 0.6, pitch = 0.3, dragging = null;
+let yaw = 0.6, pitch = 0.3, zoom = 1, dragging = null, hover = null;
 const STEP = 0.5;        // grid spacing, metres
 const AXIS = 0.5;        // axis arrow length, metres
 
@@ -76,7 +76,7 @@ function project([x, y, z], { centre, span }, w, h) {
   const z1 = x * Math.sin(yaw) + z * Math.cos(yaw);
   const y2 = y * Math.cos(pitch) - z1 * Math.sin(pitch);
   const depth = y * Math.sin(pitch) + z1 * Math.cos(pitch);
-  const s = 0.45 * Math.min(w, h) / span;
+  const s = 0.45 * zoom * Math.min(w, h) / span;
   return [w / 2 + x1 * s, h / 2 - y2 * s, depth];
 }
 
@@ -118,9 +118,18 @@ function draw() {
     .map((p, i) => p.every(Number.isFinite) ? [...project(p, trc.view, w, h), i] : null)
     .filter(Boolean)
     .sort((a, b) => a[2] - b[2]);                     // far dots first
+  let nearest = null, bestD = 12;
   for (const [sx, sy, , i] of dots) {
     ctx.fillStyle = trc.names[i].endsWith('_study') ? colour.aug : colour.pose;
     ctx.beginPath(); ctx.arc(sx, sy, 4, 0, 2 * Math.PI); ctx.fill();
+    if (hover) {
+      const d = Math.hypot(sx - hover[0], sy - hover[1]);
+      if (d < bestD) { bestD = d; nearest = [sx, sy, trc.names[i]]; }
+    }
+  }
+  if (nearest) {
+    ctx.fillStyle = css.getPropertyValue('--fg'); ctx.font = '12px system-ui';
+    ctx.fillText(nearest[2], nearest[0] + 8, nearest[1] - 6);
   }
   info.textContent = `frame ${frame + 1}/${trc.frames.length} · ${trc.names.length} markers · ${trc.rate} Hz · grid ${STEP} m`;
 }
@@ -155,13 +164,24 @@ frameInput.addEventListener('input', () => { frame = Number(frameInput.value); d
 
 canvas.addEventListener('pointerdown', e => { dragging = [e.clientX, e.clientY]; canvas.setPointerCapture(e.pointerId); });
 canvas.addEventListener('pointerup', () => { dragging = null; });
+canvas.addEventListener('pointerleave', () => { hover = null; draw(); });
 canvas.addEventListener('pointermove', e => {
-  if (!dragging) return;
+  if (!dragging) {
+    const r = canvas.getBoundingClientRect();
+    hover = [e.clientX - r.left, e.clientY - r.top];
+    draw();
+    return;
+  }
   yaw += (e.clientX - dragging[0]) * 0.01;
   pitch = Math.max(-1.5, Math.min(1.5, pitch + (e.clientY - dragging[1]) * 0.01));
   dragging = [e.clientX, e.clientY];
   draw();
 });
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom = Math.max(0.3, Math.min(5, zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+  draw();
+}, { passive: false });
 window.addEventListener('resize', draw);
 draw();
 </script>

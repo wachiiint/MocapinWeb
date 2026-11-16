@@ -12,11 +12,11 @@ Offline Python version of the Data pipeline in [docs/architect.md](../docs/archi
 │   └── opensim/
 │       ├── scale.py            # 2. .trc + height/mass -> scaled .osim
 │       └── ik.py               # 3. .osim + .trc -> joint angles .mot
-├── scripts                     # setup_demo.sh
+├── scripts                     # setup_demo.sh, clean.sh
 ├── data                        # input: videos/, calibration/, optional Config.toml
 ├── target                      # output: pose-3d/*.trc, kinematics/*.osim|*.mot, logs.txt
 ├── models                      # .osim, setup XMLs
-└── viewer                      # trc.html
+└── viewer                      # trc.html, mot.html
 ```
 
 ### Environments
@@ -57,7 +57,13 @@ xdg-open viewer/trc.html                              # [OPTIONAL] pick *_LSTM.t
 # 2. Scale model + Inverse Kinematics
 python src/opensim/scale.py --height 1.72 --mass 70   # -> target/kinematics/*.osim
 python src/opensim/ik.py                              # -> target/kinematics/*.mot
+xdg-open viewer/mot.html                              # [OPTIONAL] pick *.mot (joint angles + ROM)
+
+# 3. Clean generated files
+bash scripts/clean.sh                                 # remove target/ (pass --all to also remove data/)
 ```
+
+> (Optional) To visualize 3D skeleton and muscles (`.osim` + `.mot`): use [OpenSim GUI](https://github.com/opensim-org/opensim-gui).
 
 ## Workflow
 
