@@ -19,7 +19,7 @@ logging.disable(logging.WARNING)
 from Pose2Sim import Pose2Sim
 logging.disable(logging.NOTSET)
 
-RESEARCH_DIR = Path(__file__).resolve().parent.parent
+RESEARCH_DIR = Path(__file__).resolve().parents[2]
 STAGES = [
     ("calibration", Pose2Sim.calibration),
     ("poseEstimation", Pose2Sim.poseEstimation),
@@ -33,8 +33,10 @@ INTERMEDIATE_PATHS = ["pose", "pose-sync", "pose-associated", "videos", "calibra
 
 
 def load_config(data_dir: Path, target_dir: Path, height: float, mass: float) -> dict:
-    """Read Config.toml and silence popups, plots, and intermediate bloat."""
-    config = rtoml.load(data_dir / "Config.toml")
+    """Read Config.toml (or Pose2Sim default) and silence popups, plots, and bloat."""
+    custom_cfg = data_dir / "Config.toml"
+    default_cfg = Path(Pose2Sim.__file__).resolve().parent / "Demo_SinglePerson" / "Config.toml"
+    config = rtoml.load(custom_cfg if custom_cfg.is_file() else default_cfg)
     config["project"].update(
         project_dir=str(target_dir), participant_height=height, participant_mass=mass
     )
@@ -54,8 +56,10 @@ def stage_workspace(data_dir: Path, target_dir: Path) -> None:
     if target_dir.exists():
         shutil.rmtree(target_dir)
     target_dir.mkdir(parents=True)
-    for name in ("videos", "calibration", "Config.toml"):
+    for name in ("videos", "calibration"):
         (target_dir / name).symlink_to(data_dir / name)
+    if (data_dir / "Config.toml").is_file():
+        (target_dir / "Config.toml").symlink_to(data_dir / "Config.toml")
 
 
 def cleanup_workspace(target_dir: Path) -> None:
@@ -82,8 +86,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("data", nargs="?", type=Path, default=RESEARCH_DIR / "data", help="input folder (default: data/)")
     parser.add_argument("--target", type=Path, default=RESEARCH_DIR / "target", help="output folder (default: target/)")
-    parser.add_argument("--height", type=float, required=True, help="metres")
-    parser.add_argument("--mass", type=float, required=True, help="kg")
+    parser.add_argument("--height", type=float, required=True, help="metres (used by LSTM marker augmenter)")
+    parser.add_argument("--mass", type=float, default=70.0, help="kg (optional, unused until scaling)")
     args = parser.parse_args()
 
     data_dir = args.data.resolve()
